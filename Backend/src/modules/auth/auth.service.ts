@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import * as nodemailer from 'nodemailer';
+import { EmailService } from '../email/email.service';
 import { ConfigService } from '@nestjs/config';
 import { User } from '../../entities/user.entity';
 import { Merchant } from '../../entities/merchant.entity';
@@ -15,46 +15,40 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UsersService } from '../users/users.service';
 import { MerchantsService } from '../merchants/merchants.service';
 
+
 @Injectable()
 export class AuthService {
-  private transporter: nodemailer.Transporter;
-
   constructor(
     private usersService: UsersService,
     private merchantsService: MerchantsService,
     private jwtService: JwtService,
     private configService: ConfigService,
-  ) {
-    this.transporter = nodemailer.createTransport({
-      host: this.configService.get('EMAIL_HOST'),
-      port: this.configService.get('EMAIL_PORT'),
-      secure: false,
-      auth: {
-        user: this.configService.get('EMAIL_USER'),
-        pass: this.configService.get('EMAIL_PASS'),
-      },
-    });
-  }
+    private emailService: EmailService,
+  ) {}
 
   private generateVerificationCode(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
   async register(dto: RegisterDto) {
-    const hashed = await bcrypt.hash(dto.password, 10);
+    const existingUser = await this.usersService.findOneWithPassword(dto.email );
+    const existingMerchant = await this.merchantsService.findOne({ where: { email: dto.email } });
+
+    if (existingUser || existingMerchant) {
+      throw new BadRequestException('Email already registered');
+    }
 
     if (dto.role === 'CUSTOMER') {
+      const hashed = await bcrypt.hash(dto.password, 10);
       const user = this.usersService.create({ email: dto.email, password: hashed, role: 'CUSTOMER' });
       await this.usersService.save(user);
       return this.login({ email: dto.email, password: dto.password });
     }
 
     // Merchant
-    let merchant = await this.merchantsService.findOne({ where: { email: dto.email } });
-    if (merchant) throw new BadRequestException('Email already registered');
-
+    const hashed = await bcrypt.hash(dto.password, 10);
     const code = this.generateVerificationCode();
-    merchant = this.merchantsService.create({
+    const merchant = this.merchantsService.create({
       email: dto.email,
       password: hashed,
       role: 'MERCHANT',
@@ -65,19 +59,20 @@ export class AuthService {
     });
     await this.merchantsService.save(merchant);
 
-    // Send verification email
-    await this.transporter.sendMail({
-      from: this.configService.get('EMAIL_FROM'),
-      to: dto.email,
-      subject: 'Verify your Deal-Biz Merchant Account',
-      html: `<p>Your verification code is: <strong>${code}</strong></p><p>Valid for 15 minutes.</p>`,
-    });
+    // DEV: log verification code
+    if (this.configService.get('NODE_ENV') !== 'production') {
+      console.log('Merchant verification code:', code);
+    }
 
+    // Send email
+    setImmediate(() => {
+      this.emailService.sendVerificationEmail(dto.email, code);
+    });
     return { message: 'Merchant registered. Check email for verification code.' };
   }
 
   async login(dto: LoginDto) {
-    let entity: any = await this.usersService.findOne({ where: { email: dto.email } });
+    let entity: any = await this.usersService.findOneWithPassword(dto.email );
     if (!entity) entity = await this.merchantsService.findOne({ where: { email: dto.email } });
 
     if (!entity || !(await bcrypt.compare(dto.password, entity.password))) {
@@ -100,35 +95,39 @@ export class AuthService {
 
   async verifyEmail(dto: VerifyEmailDto) {
     const merchant = await this.merchantsService.findOne({ where: { email: dto.email } });
-    if (!merchant || merchant.verificationCode !== dto.code || (merchant.verificationExpiresAt && merchant.verificationExpiresAt < new Date())) {
+    if (!merchant) throw new BadRequestException('Email not found');
+
+    if (merchant.verificationCode !== dto.code || 
+        (merchant.verificationExpiresAt && merchant.verificationExpiresAt < new Date())) {
       throw new BadRequestException('Invalid or expired code');
     }
 
     merchant.isVerified = true;
     merchant.verificationCode = null;
     merchant.verificationExpiresAt = null;
-    await this.merchantsService.
-    save(merchant);
+    await this.merchantsService.save(merchant);
 
     return { message: 'Merchant email verified successfully' };
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
-    // For simplicity we send reset token as JWT (valid 15 min)
-    const user = await this.usersService.findOne({ where: { email: dto.email } }) ||
-                 await this.merchantsService.findOne({ where: { email: dto.email } });
+    const user =
+      (await this.usersService.findOneWithPassword(dto.email)) ||
+      (await this.merchantsService.findOne({ where: { email: dto.email } }));
+
     if (!user) throw new BadRequestException('Email not found');
 
     const token = this.jwtService.sign(
       { sub: user.id, email: dto.email },
-      { secret: this.configService.get('JWT_SECRET'), expiresIn: '15m' }
+      { secret: this.configService.get('JWT_SECRET'), expiresIn: '15m' },
     );
 
-    await this.transporter.sendMail({
-      from: this.configService.get('EMAIL_FROM'),
-      to: dto.email,
-      subject: 'Deal-Biz Password Reset',
-      html: `<p>Reset your password here: <a href="http://localhost:3000/reset?token=${token}">Reset Password</a></p>`,
+    if (this.configService.get('NODE_ENV') !== 'production') {
+      console.log('Password reset token:', token);
+    }
+
+    setImmediate(() => {
+      this.emailService.sendPasswordReset(dto.email, token);
     });
 
     return { message: 'Password reset link sent to email' };

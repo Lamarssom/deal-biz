@@ -19,9 +19,12 @@ export class UsersService {
     return this.repo.save(user);
   }
 
-  findOne(options: any){
-    return this.repo.findOne(options);
-  }
+  async findOneWithPassword(email: string) {
+    return this.repo.findOne({
+        where: { email },
+        select: ['id', 'email', 'password', 'role']
+    });
+    }
 
   findById(id: string) {
     return this.repo.findOne({ where: { id } });

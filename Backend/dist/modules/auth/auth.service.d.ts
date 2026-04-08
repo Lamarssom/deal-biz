@@ -1,4 +1,5 @@
 import { JwtService } from '@nestjs/jwt';
+import { EmailService } from '../email/email.service';
 import { ConfigService } from '@nestjs/config';
 import { RegisterDto } from '../../dtos/register.dto';
 import { LoginDto } from '../../dtos/login.dto';
@@ -12,8 +13,8 @@ export declare class AuthService {
     private merchantsService;
     private jwtService;
     private configService;
-    private transporter;
-    constructor(usersService: UsersService, merchantsService: MerchantsService, jwtService: JwtService, configService: ConfigService);
+    private emailService;
+    constructor(usersService: UsersService, merchantsService: MerchantsService, jwtService: JwtService, configService: ConfigService, emailService: EmailService);
     private generateVerificationCode;
     register(dto: RegisterDto): Promise<{
         accessToken: string;

@@ -28,8 +28,11 @@ let MerchantsService = class MerchantsService {
     save(merchant) {
         return this.repo.save(merchant);
     }
-    findOne(options) {
-        return this.repo.findOne(options);
+    async findOne(email) {
+        return this.repo.findOne({
+            where: { email },
+            select: ['id', 'email', 'password', 'role', 'isVerified']
+        });
     }
     findById(id) {
         return this.repo.findOne({ where: { id } });

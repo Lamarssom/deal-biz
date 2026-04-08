@@ -28,8 +28,11 @@ let UsersService = class UsersService {
     save(user) {
         return this.repo.save(user);
     }
-    findOne(options) {
-        return this.repo.findOne(options);
+    async findOneWithPassword(email) {
+        return this.repo.findOne({
+            where: { email },
+            select: ['id', 'email', 'password', 'role']
+        });
     }
     findById(id) {
         return this.repo.findOne({ where: { id } });

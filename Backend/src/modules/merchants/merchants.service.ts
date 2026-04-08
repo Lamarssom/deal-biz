@@ -19,9 +19,12 @@ export class MerchantsService {
     return this.repo.save(merchant);
   }
 
-  findOne(options: any) {
-    return this.repo.findOne(options);
-  }
+  async findOne(email: string) {
+    return this.repo.findOne({
+        where: { email },
+        select: ['id', 'email', 'password', 'role', 'isVerified']
+    });
+    }
 
   findById(id: string) {
     return this.repo.findOne({ where: { id } });
