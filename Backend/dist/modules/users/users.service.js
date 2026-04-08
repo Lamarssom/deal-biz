@@ -28,7 +28,7 @@ let UsersService = class UsersService {
     save(user) {
         return this.repo.save(user);
     }
-    async findOneWithPassword(email) {
+    async findOne(email) {
         return this.repo.findOne({
             where: { email },
             select: ['id', 'email', 'password', 'role']

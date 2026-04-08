@@ -19,7 +19,7 @@ export class UsersService {
     return this.repo.save(user);
   }
 
-  async findOneWithPassword(email: string) {
+  async findOne(email: string) {
     return this.repo.findOne({
         where: { email },
         select: ['id', 'email', 'password', 'role']

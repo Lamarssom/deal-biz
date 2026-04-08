@@ -67,19 +67,33 @@ let AuthService = class AuthService {
         return Math.floor(100000 + Math.random() * 900000).toString();
     }
     async register(dto) {
-        const existingUser = await this.usersService.findOneWithPassword(dto.email);
-        const existingMerchant = await this.merchantsService.findOne({ where: { email: dto.email } });
-        if (existingUser || existingMerchant) {
+        const existingUser = await this.usersService.findOne(dto.email);
+        let existingMerchant = await this.merchantsService.findOne(dto.email);
+        if (existingUser)
             throw new common_1.BadRequestException('Email already registered');
-        }
+        const hashed = await bcrypt.hash(dto.password, 10);
         if (dto.role === 'CUSTOMER') {
-            const hashed = await bcrypt.hash(dto.password, 10);
             const user = this.usersService.create({ email: dto.email, password: hashed, role: 'CUSTOMER' });
             await this.usersService.save(user);
             return this.login({ email: dto.email, password: dto.password });
         }
-        const hashed = await bcrypt.hash(dto.password, 10);
         const code = this.generateVerificationCode();
+        if (existingMerchant) {
+            if (existingMerchant.isVerified) {
+                throw new common_1.BadRequestException('Email already registered');
+            }
+            existingMerchant.verificationCode = code;
+            existingMerchant.verificationExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+            existingMerchant.password = hashed;
+            await this.merchantsService.save(existingMerchant);
+            if (this.configService.get('NODE_ENV') !== 'production') {
+                console.log('Resent merchant verification code:', code);
+            }
+            setImmediate(() => {
+                this.emailService.sendVerificationEmail(dto.email, code);
+            });
+            return { message: 'Verification code resent. Check email.' };
+        }
         const merchant = this.merchantsService.create({
             email: dto.email,
             password: hashed,
@@ -99,9 +113,9 @@ let AuthService = class AuthService {
         return { message: 'Merchant registered. Check email for verification code.' };
     }
     async login(dto) {
-        let entity = await this.usersService.findOneWithPassword(dto.email);
+        let entity = await this.usersService.findOne(dto.email);
         if (!entity)
-            entity = await this.merchantsService.findOne({ where: { email: dto.email } });
+            entity = await this.merchantsService.findOne(dto.email);
         if (!entity || !(await bcrypt.compare(dto.password, entity.password))) {
             throw new common_1.UnauthorizedException('Invalid credentials');
         }
@@ -118,9 +132,12 @@ let AuthService = class AuthService {
         };
     }
     async verifyEmail(dto) {
-        const merchant = await this.merchantsService.findOne({ where: { email: dto.email } });
+        const merchant = await this.merchantsService.findOne(dto.email);
         if (!merchant)
             throw new common_1.BadRequestException('Email not found');
+        if (merchant.isVerified) {
+            return { message: 'Merchant email already verified' };
+        }
         if (merchant.verificationCode !== dto.code ||
             (merchant.verificationExpiresAt && merchant.verificationExpiresAt < new Date())) {
             throw new common_1.BadRequestException('Invalid or expired code');
@@ -132,8 +149,8 @@ let AuthService = class AuthService {
         return { message: 'Merchant email verified successfully' };
     }
     async forgotPassword(dto) {
-        const user = (await this.usersService.findOneWithPassword(dto.email)) ||
-            (await this.merchantsService.findOne({ where: { email: dto.email } }));
+        const user = (await this.usersService.findOne(dto.email)) ||
+            (await this.merchantsService.findOne(dto.email));
         if (!user)
             throw new common_1.BadRequestException('Email not found');
         const token = this.jwtService.sign({ sub: user.id, email: dto.email }, { secret: this.configService.get('JWT_SECRET'), expiresIn: '15m' });

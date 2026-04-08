@@ -31,23 +31,45 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto) {
-    const existingUser = await this.usersService.findOneWithPassword(dto.email );
-    const existingMerchant = await this.merchantsService.findOne({ where: { email: dto.email } });
+    const existingUser = await this.usersService.findOne(dto.email);
+    let existingMerchant = await this.merchantsService.findOne(dto.email);
 
-    if (existingUser || existingMerchant) {
-      throw new BadRequestException('Email already registered');
-    }
+    // If user exists, block registration
+    if (existingUser) throw new BadRequestException('Email already registered');
+
+    const hashed = await bcrypt.hash(dto.password, 10);
 
     if (dto.role === 'CUSTOMER') {
-      const hashed = await bcrypt.hash(dto.password, 10);
       const user = this.usersService.create({ email: dto.email, password: hashed, role: 'CUSTOMER' });
       await this.usersService.save(user);
       return this.login({ email: dto.email, password: dto.password });
     }
 
-    // Merchant
-    const hashed = await bcrypt.hash(dto.password, 10);
+    // MERCHANT registration
     const code = this.generateVerificationCode();
+
+    if (existingMerchant) {
+      if (existingMerchant.isVerified) {
+        throw new BadRequestException('Email already registered');
+      }
+      // Resend verification for unverified merchant
+      existingMerchant.verificationCode = code;
+      existingMerchant.verificationExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+      existingMerchant.password = hashed; // optional: update password
+      await this.merchantsService.save(existingMerchant);
+
+      if (this.configService.get('NODE_ENV') !== 'production') {
+        console.log('Resent merchant verification code:', code);
+      }
+
+      setImmediate(() => {
+        this.emailService.sendVerificationEmail(dto.email, code);
+      });
+
+      return { message: 'Verification code resent. Check email.' };
+    }
+
+    // New merchant
     const merchant = this.merchantsService.create({
       email: dto.email,
       password: hashed,
@@ -59,21 +81,20 @@ export class AuthService {
     });
     await this.merchantsService.save(merchant);
 
-    // DEV: log verification code
     if (this.configService.get('NODE_ENV') !== 'production') {
       console.log('Merchant verification code:', code);
     }
 
-    // Send email
     setImmediate(() => {
       this.emailService.sendVerificationEmail(dto.email, code);
     });
+
     return { message: 'Merchant registered. Check email for verification code.' };
   }
 
   async login(dto: LoginDto) {
-    let entity: any = await this.usersService.findOneWithPassword(dto.email );
-    if (!entity) entity = await this.merchantsService.findOne({ where: { email: dto.email } });
+    let entity: any = await this.usersService.findOne(dto.email );
+    if (!entity) entity = await this.merchantsService.findOne(dto.email);
 
     if (!entity || !(await bcrypt.compare(dto.password, entity.password))) {
       throw new UnauthorizedException('Invalid credentials');
@@ -94,10 +115,14 @@ export class AuthService {
   }
 
   async verifyEmail(dto: VerifyEmailDto) {
-    const merchant = await this.merchantsService.findOne({ where: { email: dto.email } });
+    const merchant = await this.merchantsService.findOne(dto.email);
     if (!merchant) throw new BadRequestException('Email not found');
 
-    if (merchant.verificationCode !== dto.code || 
+    if (merchant.isVerified) {
+      return { message: 'Merchant email already verified' }; // idempotent response
+    }
+
+    if (merchant.verificationCode !== dto.code ||
         (merchant.verificationExpiresAt && merchant.verificationExpiresAt < new Date())) {
       throw new BadRequestException('Invalid or expired code');
     }
@@ -111,21 +136,21 @@ export class AuthService {
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
-    const user =
-      (await this.usersService.findOneWithPassword(dto.email)) ||
-      (await this.merchantsService.findOne({ where: { email: dto.email } }));
+    const user = (await this.usersService.findOne(dto.email)) ||
+                (await this.merchantsService.findOne(dto.email));
 
     if (!user) throw new BadRequestException('Email not found');
 
     const token = this.jwtService.sign(
       { sub: user.id, email: dto.email },
-      { secret: this.configService.get('JWT_SECRET'), expiresIn: '15m' },
+      { secret: this.configService.get('JWT_SECRET'), expiresIn: '15m' }
     );
 
     if (this.configService.get('NODE_ENV') !== 'production') {
       console.log('Password reset token:', token);
     }
 
+    // Async email
     setImmediate(() => {
       this.emailService.sendPasswordReset(dto.email, token);
     });

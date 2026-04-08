@@ -31,7 +31,7 @@ let MerchantsService = class MerchantsService {
     async findOne(email) {
         return this.repo.findOne({
             where: { email },
-            select: ['id', 'email', 'password', 'role', 'isVerified']
+            select: ['id', 'email', 'password', 'role', 'isVerified', 'verificationCode', 'verificationExpiresAt']
         });
     }
     findById(id) {
