@@ -22,23 +22,23 @@ let UsersService = class UsersService {
     constructor(repo) {
         this.repo = repo;
     }
-    findById(id) {
-        return this.repo.findOne({ where: { id } });
-    }
-    findByEmail(email) {
-        return this.repo.findOne({ where: { email } });
-    }
     create(data) {
         return this.repo.create(data);
     }
     save(user) {
         return this.repo.save(user);
     }
-    update(criteria, data) {
-        return this.repo.update(criteria, data);
-    }
     findOne(options) {
         return this.repo.findOne(options);
+    }
+    findById(id) {
+        return this.repo.findOne({ where: { id } });
+    }
+    findByEmail(email) {
+        return this.repo.findOne({ where: { email } });
+    }
+    update(criteria, data) {
+        return this.repo.update(criteria, data);
     }
 };
 exports.UsersService = UsersService;

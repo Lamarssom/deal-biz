@@ -6,15 +6,10 @@ import { Merchant } from '../../entities/merchant.entity';
 
 @Injectable()
 export class MerchantsService {
-  constructor(@InjectRepository(Merchant) private repo: Repository<Merchant>) {}
-
-  findById(id: string) {
-    return this.repo.findOne({ where: { id } });
-  }
-
-  findByEmail(email: string) {
-    return this.repo.findOne({ where: { email } });
-  }
+  constructor(
+    @InjectRepository(Merchant)
+    private readonly repo: Repository<Merchant>,
+  ) {}
 
   create(data: Partial<Merchant>) {
     return this.repo.create(data);
@@ -24,11 +19,15 @@ export class MerchantsService {
     return this.repo.save(merchant);
   }
 
-  update(criteria: any, data: Partial<Merchant>) {
-    return this.repo.update(criteria, data);
-  }
-
   findOne(options: any) {
     return this.repo.findOne(options);
+  }
+
+  findById(id: string) {
+    return this.repo.findOne({ where: { id } });
+  }
+
+  update(criteria: any, data: Partial<Merchant>) {
+    return this.repo.update(criteria, data);
   }
 }

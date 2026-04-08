@@ -6,15 +6,10 @@ import { User } from '../../entities/user.entity';
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectRepository(User) private repo: Repository<User>) {}
-
-  findById(id: string) {
-    return this.repo.findOne({ where: { id } });
-  }
-
-  findByEmail(email: string) {
-    return this.repo.findOne({ where: { email } });
-  }
+  constructor(
+    @InjectRepository(User)
+    private readonly repo: Repository<User>
+  ) {}
 
   create(data: Partial<User>) {
     return this.repo.create(data);
@@ -24,11 +19,20 @@ export class UsersService {
     return this.repo.save(user);
   }
 
+  findOne(options: any){
+    return this.repo.findOne(options);
+  }
+
+  findById(id: string) {
+    return this.repo.findOne({ where: { id } });
+  }
+
+  findByEmail(email: string) {
+    return this.repo.findOne({ where: { email } });
+  }
+
   update(criteria: any, data: Partial<User>) {
     return this.repo.update(criteria, data);
   }
 
-  findOne(options: any) {
-    return this.repo.findOne(options);
-  }
 }

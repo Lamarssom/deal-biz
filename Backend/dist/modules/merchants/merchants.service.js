@@ -22,23 +22,20 @@ let MerchantsService = class MerchantsService {
     constructor(repo) {
         this.repo = repo;
     }
-    findById(id) {
-        return this.repo.findOne({ where: { id } });
-    }
-    findByEmail(email) {
-        return this.repo.findOne({ where: { email } });
-    }
     create(data) {
         return this.repo.create(data);
     }
     save(merchant) {
         return this.repo.save(merchant);
     }
-    update(criteria, data) {
-        return this.repo.update(criteria, data);
-    }
     findOne(options) {
         return this.repo.findOne(options);
+    }
+    findById(id) {
+        return this.repo.findOne({ where: { id } });
+    }
+    update(criteria, data) {
+        return this.repo.update(criteria, data);
     }
 };
 exports.MerchantsService = MerchantsService;
