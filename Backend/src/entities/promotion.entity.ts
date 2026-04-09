@@ -2,13 +2,16 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Merchant } from './merchant.entity';
 
-export type PromotionType = 'STANDARD' | 'MICRO';
+export enum PromotionType {
+    STANDARD = 'STANDARD',
+    MICRO = 'MICRO'
+}
 
 @Entity('promotions')
 export class Promotion {
   @PrimaryGeneratedColumn('uuid')
   id: string;
-  
+
   @ManyToOne(() => Merchant, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'merchantId' })
   merchant: Merchant;

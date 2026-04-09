@@ -1,4 +1,4 @@
-import type { PromotionType } from '../../../entities/promotion.entity';
+import { PromotionType } from '../../../entities/promotion.entity';
 export declare class CreatePromotionDto {
     type: PromotionType;
     title: string;
@@ -8,5 +8,5 @@ export declare class CreatePromotionDto {
     photoUrl?: string;
     expiry: string;
     quantityLimit: number;
-    radiusKm?: number;
+    idempotencyKey?: string;
 }

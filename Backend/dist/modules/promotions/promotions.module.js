@@ -15,6 +15,7 @@ const promotion_entity_1 = require("../../entities/promotion.entity");
 const merchant_entity_1 = require("../../entities/merchant.entity");
 const location_module_1 = require("../location/location.module");
 const payments_module_1 = require("../payments/payments.module");
+const axios_1 = require("@nestjs/axios");
 let PromotionsModule = class PromotionsModule {
 };
 exports.PromotionsModule = PromotionsModule;
@@ -24,6 +25,7 @@ exports.PromotionsModule = PromotionsModule = __decorate([
             typeorm_1.TypeOrmModule.forFeature([promotion_entity_1.Promotion, merchant_entity_1.Merchant]),
             location_module_1.LocationModule,
             payments_module_1.PaymentsModule,
+            axios_1.HttpModule,
         ],
         controllers: [promotions_controller_1.PromotionsController],
         providers: [promotions_service_1.PromotionsService],

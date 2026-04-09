@@ -1,5 +1,8 @@
 import { Merchant } from './merchant.entity';
-export type PromotionType = 'STANDARD' | 'MICRO';
+export declare enum PromotionType {
+    STANDARD = "STANDARD",
+    MICRO = "MICRO"
+}
 export declare class Promotion {
     id: string;
     merchant: Merchant;

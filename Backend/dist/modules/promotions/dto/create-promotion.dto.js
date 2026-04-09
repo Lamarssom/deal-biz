@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CreatePromotionDto = void 0;
 const class_validator_1 = require("class-validator");
+const promotion_entity_1 = require("../../../entities/promotion.entity");
 class CreatePromotionDto {
     type;
     title;
@@ -19,22 +20,24 @@ class CreatePromotionDto {
     originalPrice;
     photoUrl;
     expiry;
-    quantityLimit;
-    radiusKm;
+    quantityLimit = 0;
+    idempotencyKey;
 }
 exports.CreatePromotionDto = CreatePromotionDto;
 __decorate([
-    (0, class_validator_1.IsEnum)(['STANDARD', 'MICRO']),
+    (0, class_validator_1.IsEnum)(promotion_entity_1.PromotionType),
     __metadata("design:type", String)
 ], CreatePromotionDto.prototype, "type", void 0);
 __decorate([
     (0, class_validator_1.IsNotEmpty)(),
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(100),
     __metadata("design:type", String)
 ], CreatePromotionDto.prototype, "title", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MaxLength)(500),
     __metadata("design:type", String)
 ], CreatePromotionDto.prototype, "description", void 0);
 __decorate([
@@ -45,6 +48,7 @@ __decorate([
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(0),
     __metadata("design:type", Number)
 ], CreatePromotionDto.prototype, "originalPrice", void 0);
 __decorate([
@@ -63,7 +67,7 @@ __decorate([
 ], CreatePromotionDto.prototype, "quantityLimit", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsNumber)(),
-    __metadata("design:type", Number)
-], CreatePromotionDto.prototype, "radiusKm", void 0);
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreatePromotionDto.prototype, "idempotencyKey", void 0);
 //# sourceMappingURL=create-promotion.dto.js.map
