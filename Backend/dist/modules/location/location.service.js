@@ -14,45 +14,44 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LocationService = void 0;
 const common_1 = require("@nestjs/common");
-const merchant_entity_1 = require("../../entities/merchant.entity");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
+const merchant_entity_1 = require("../../entities/merchant.entity");
+const haversine_1 = require("../../common/utils/haversine");
+const bounding_box_1 = require("../../common/utils/bounding-box");
 let LocationService = class LocationService {
     merchantRepo;
     constructor(merchantRepo) {
         this.merchantRepo = merchantRepo;
     }
+    async findMerchantsInRadius(userLat, userLng, radiusKm = 3, limit = 20) {
+        const { minLat, maxLat, minLng, maxLng } = (0, bounding_box_1.getBoundingBox)(userLat, userLng, radiusKm);
+        const query = `
+      SELECT *,
+             (${haversine_1.calculateHaversineDistance.sql}) AS distance_km
+      FROM merchants
+      WHERE is_verified = true
+        AND is_active = true
+        AND latitude BETWEEN $1 AND $2
+        AND longitude BETWEEN $3 AND $4
+        AND (${haversine_1.calculateHaversineDistance.sql}) <= $5
+      ORDER BY distance_km ASC
+      LIMIT $6
+    `;
+        const merchants = await this.merchantRepo.query(query, [
+            minLat,
+            maxLat,
+            minLng,
+            maxLng,
+            radiusKm,
+            limit,
+            userLat,
+            userLng
+        ]);
+        return merchants;
+    }
     calculateDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371;
-        const dLat = this.toRad(lat2 - lat1);
-        const dLon = this.toRad(lon2 - lon1);
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(this.toRad(lat1)) *
-                Math.cos(this.toRad(lat2)) *
-                Math.sin(dLon / 2) *
-                Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-    }
-    toRad(value) {
-        return (value * Math.PI) / 180;
-    }
-    async findMerchantsInRadius(lat, lng, radiusKm = 3) {
-        const merchants = await this.merchantRepo.find({
-            where: { isVerified: true, isActive: true },
-        });
-        return merchants
-            .filter((m) => {
-            if (!m.latitude || !m.longitude)
-                return false;
-            const distance = this.calculateDistance(lat, lng, m.latitude, m.longitude);
-            return distance <= radiusKm;
-        })
-            .sort((a, b) => {
-            const distA = this.calculateDistance(lat, lng, a.latitude, a.longitude);
-            const distB = this.calculateDistance(lat, lng, b.latitude, b.longitude);
-            return distA - distB;
-        });
+        return haversine_1.calculateHaversineDistance.js(lat1, lon1, lat2, lon2);
     }
 };
 exports.LocationService = LocationService;

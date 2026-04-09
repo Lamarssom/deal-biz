@@ -22,11 +22,12 @@ let LocationController = class LocationController {
     constructor(locationService) {
         this.locationService = locationService;
     }
-    async getNearbyMerchants(lat, lng, radius) {
+    async getNearbyMerchants(lat, lng, radius = '3', limit = '20') {
         const latitude = parseFloat(lat);
         const longitude = parseFloat(lng);
-        const radiusKm = radius ? parseFloat(radius) : 3;
-        return this.locationService.findMerchantsInRadius(latitude, longitude, radiusKm);
+        const radiusKm = parseFloat(radius);
+        const maxResults = parseInt(limit);
+        return this.locationService.findMerchantsInRadius(latitude, longitude, radiusKm, maxResults);
     }
 };
 exports.LocationController = LocationController;
@@ -35,12 +36,14 @@ __decorate([
     (0, common_1.Get)('nearby-merchants'),
     (0, swagger_1.ApiQuery)({ name: 'lat', required: true, type: Number }),
     (0, swagger_1.ApiQuery)({ name: 'lng', required: true, type: Number }),
-    (0, swagger_1.ApiQuery)({ name: 'radius', required: false, type: Number }),
+    (0, swagger_1.ApiQuery)({ name: 'radius', required: false, type: Number, example: 3 }),
+    (0, swagger_1.ApiQuery)({ name: 'limit', required: false, type: Number, example: 20 }),
     __param(0, (0, common_1.Query)('lat')),
     __param(1, (0, common_1.Query)('lng')),
     __param(2, (0, common_1.Query)('radius')),
+    __param(3, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:paramtypes", [String, String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], LocationController.prototype, "getNearbyMerchants", null);
 exports.LocationController = LocationController = __decorate([

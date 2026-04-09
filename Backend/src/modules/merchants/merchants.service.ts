@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Merchant } from '../../entities/merchant.entity';
 import { getBoundingBox } from '../../common/utils/bounding-box'
-import { haversine } from '../../common/utils/haversine'
+import { calculateHaversineDistance } from '../../common/utils/haversine'
 
 @Injectable()
 export class MerchantsService {
