@@ -85,6 +85,7 @@ __decorate([
     __metadata("design:type", Date)
 ], Merchant.prototype, "updatedAt", void 0);
 exports.Merchant = Merchant = __decorate([
-    (0, typeorm_1.Entity)('merchants')
+    (0, typeorm_1.Entity)('merchants'),
+    (0, typeorm_1.Index)(['latitude', 'longitude'])
 ], Merchant);
 //# sourceMappingURL=merchant.entity.js.map

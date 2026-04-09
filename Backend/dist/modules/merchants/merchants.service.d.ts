@@ -8,4 +8,5 @@ export declare class MerchantsService {
     findOne(email: string): Promise<Merchant | null>;
     findById(id: string): Promise<Merchant | null>;
     update(criteria: any, data: Partial<Merchant>): Promise<import("typeorm").UpdateResult>;
+    findNearby(lat: number, lng: number, radius?: number): Promise<any>;
 }

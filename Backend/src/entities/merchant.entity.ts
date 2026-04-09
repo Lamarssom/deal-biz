@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 import type { Role } from './user.entity';
 
 @Entity('merchants')
+@Index(['latitude', 'longitude'])
 export class Merchant {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -44,4 +45,5 @@ export class Merchant {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
 }
