@@ -8,15 +8,26 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PromotionsModule = void 0;
 const common_1 = require("@nestjs/common");
+const typeorm_1 = require("@nestjs/typeorm");
 const promotions_controller_1 = require("./promotions.controller");
 const promotions_service_1 = require("./promotions.service");
+const promotion_entity_1 = require("../../entities/promotion.entity");
+const merchant_entity_1 = require("../../entities/merchant.entity");
+const location_module_1 = require("../location/location.module");
+const payments_module_1 = require("../payments/payments.module");
 let PromotionsModule = class PromotionsModule {
 };
 exports.PromotionsModule = PromotionsModule;
 exports.PromotionsModule = PromotionsModule = __decorate([
     (0, common_1.Module)({
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([promotion_entity_1.Promotion, merchant_entity_1.Merchant]),
+            location_module_1.LocationModule,
+            payments_module_1.PaymentsModule,
+        ],
         controllers: [promotions_controller_1.PromotionsController],
-        providers: [promotions_service_1.PromotionsService]
+        providers: [promotions_service_1.PromotionsService],
+        exports: [promotions_service_1.PromotionsService],
     })
 ], PromotionsModule);
 //# sourceMappingURL=promotions.module.js.map
