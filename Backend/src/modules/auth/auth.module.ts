@@ -1,3 +1,4 @@
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -9,9 +10,12 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { UsersModule } from '../users/users.module';
 import { MerchantsModule } from '../merchants/merchants.module';
 import { EmailModule } from '../email/email.module';
+import { LgaService } from '../lga/lga.service';
+import { LGA } from '../../entities/lga.entity';
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([LGA]),
     UsersModule,
     MerchantsModule,
     EmailModule,
@@ -25,7 +29,7 @@ import { EmailModule } from '../email/email.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard, RolesGuard],
+  providers: [AuthService, LgaService, JwtStrategy, JwtAuthGuard, RolesGuard],
   exports: [AuthService, JwtAuthGuard, RolesGuard],
 })
 export class AuthModule {}

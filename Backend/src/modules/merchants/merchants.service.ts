@@ -5,17 +5,40 @@ import { Repository } from 'typeorm';
 import { Merchant } from '../../entities/merchant.entity';
 import { getBoundingBox } from '../../common/utils/bounding-box'
 import { calculateHaversineDistance } from '../../common/utils/haversine'
+import { LGA } from '../../entities/lga.entity';
 
 @Injectable()
 export class MerchantsService {
   constructor(
     @InjectRepository(Merchant)
     private readonly repo: Repository<Merchant>,
+
+    @InjectRepository(LGA)
+    private readonly lgaRepo: Repository<LGA>,
   ) {}
 
-  create(data: Partial<Merchant>) {
-    return this.repo.create(data);
-  }
+  async create(data: Partial<Merchant>) {
+
+    if (!data.businessLGA) {
+        throw new Error('Business LGA is required');
+    }
+
+    const lga = await this.lgaRepo.findOne({
+        where: { lga: data.businessLGA }
+    });
+
+    if (!lga) {
+        throw new Error('Invalid LGA');
+    }
+
+    const merchant = this.repo.create({
+        ...data,
+        latitude: lga.latitude,
+        longitude: lga.longitude
+    });
+
+    return merchant;
+    }
 
   save(merchant: Merchant) {
     return this.repo.save(merchant);

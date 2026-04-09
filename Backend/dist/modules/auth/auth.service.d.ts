@@ -8,13 +8,15 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UsersService } from '../users/users.service';
 import { MerchantsService } from '../merchants/merchants.service';
+import { LgaService } from '../lga/lga.service';
 export declare class AuthService {
     private usersService;
     private merchantsService;
     private jwtService;
     private configService;
     private emailService;
-    constructor(usersService: UsersService, merchantsService: MerchantsService, jwtService: JwtService, configService: ConfigService, emailService: EmailService);
+    private lgaService;
+    constructor(usersService: UsersService, merchantsService: MerchantsService, jwtService: JwtService, configService: ConfigService, emailService: EmailService, lgaService: LgaService);
     private generateVerificationCode;
     register(dto: RegisterDto): Promise<{
         accessToken: string;

@@ -22,6 +22,9 @@ export class Merchant {
   @Column()
   category: string; // e.g. "Food", "Haircut", "Groceries"
 
+  @Column({ type: 'varchar', nullable: true })
+  businessLGA: string;
+
   @Column('decimal', { precision: 10, scale: 6, nullable: true })
   latitude: number | null;
 

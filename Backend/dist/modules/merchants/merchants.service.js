@@ -18,13 +18,30 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const merchant_entity_1 = require("../../entities/merchant.entity");
 const bounding_box_1 = require("../../common/utils/bounding-box");
+const lga_entity_1 = require("../../entities/lga.entity");
 let MerchantsService = class MerchantsService {
     repo;
-    constructor(repo) {
+    lgaRepo;
+    constructor(repo, lgaRepo) {
         this.repo = repo;
+        this.lgaRepo = lgaRepo;
     }
-    create(data) {
-        return this.repo.create(data);
+    async create(data) {
+        if (!data.businessLGA) {
+            throw new Error('Business LGA is required');
+        }
+        const lga = await this.lgaRepo.findOne({
+            where: { lga: data.businessLGA }
+        });
+        if (!lga) {
+            throw new Error('Invalid LGA');
+        }
+        const merchant = this.repo.create({
+            ...data,
+            latitude: lga.latitude,
+            longitude: lga.longitude
+        });
+        return merchant;
     }
     save(merchant) {
         return this.repo.save(merchant);
@@ -70,6 +87,8 @@ exports.MerchantsService = MerchantsService;
 exports.MerchantsService = MerchantsService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(merchant_entity_1.Merchant)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __param(1, (0, typeorm_1.InjectRepository)(lga_entity_1.LGA)),
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository])
 ], MerchantsService);
 //# sourceMappingURL=merchants.service.js.map

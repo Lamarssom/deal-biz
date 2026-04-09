@@ -17,6 +17,7 @@ class RegisterDto {
     role;
     businessName;
     category;
+    businessLGA;
 }
 exports.RegisterDto = RegisterDto;
 __decorate([
@@ -43,4 +44,9 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], RegisterDto.prototype, "category", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], RegisterDto.prototype, "businessLGA", void 0);
 //# sourceMappingURL=register.dto.js.map

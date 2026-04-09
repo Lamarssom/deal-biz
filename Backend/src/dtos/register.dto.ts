@@ -1,3 +1,4 @@
+//\src\dtos\register.dto.ts
 import { IsEmail, IsNotEmpty, IsEnum, MinLength, IsOptional, IsString } from 'class-validator';
 import type { Role } from '../entities/user.entity';
 
@@ -21,4 +22,8 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   category?: string;
+  
+  @IsOptional()
+  @IsString()
+  businessLGA?: string;
 }

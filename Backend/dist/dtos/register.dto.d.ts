@@ -5,4 +5,5 @@ export declare class RegisterDto {
     role: Role;
     businessName?: string;
     category?: string;
+    businessLGA?: string;
 }

@@ -18,6 +18,7 @@ let Merchant = class Merchant {
     role;
     businessName;
     category;
+    businessLGA;
     latitude;
     longitude;
     isVerified;
@@ -52,6 +53,10 @@ __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", String)
 ], Merchant.prototype, "category", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
+    __metadata("design:type", String)
+], Merchant.prototype, "businessLGA", void 0);
 __decorate([
     (0, typeorm_1.Column)('decimal', { precision: 10, scale: 6, nullable: true }),
     __metadata("design:type", Object)

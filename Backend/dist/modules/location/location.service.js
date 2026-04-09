@@ -26,29 +26,31 @@ let LocationService = class LocationService {
     }
     async findMerchantsInRadius(userLat, userLng, radiusKm = 3, limit = 20) {
         const { minLat, maxLat, minLng, maxLng } = (0, bounding_box_1.getBoundingBox)(userLat, userLng, radiusKm);
-        const query = `
-      SELECT *,
-             (${haversine_1.calculateHaversineDistance.sql}) AS distance_km
-      FROM merchants
-      WHERE is_verified = true
-        AND is_active = true
-        AND latitude BETWEEN $1 AND $2
-        AND longitude BETWEEN $3 AND $4
-        AND (${haversine_1.calculateHaversineDistance.sql}) <= $5
-      ORDER BY distance_km ASC
-      LIMIT $6
-    `;
-        const merchants = await this.merchantRepo.query(query, [
-            minLat,
-            maxLat,
-            minLng,
-            maxLng,
-            radiusKm,
-            limit,
+        const queryBuilder = this.merchantRepo
+            .createQueryBuilder('merchant')
+            .addSelect(`(${haversine_1.calculateHaversineDistance.sql})`, 'distance_km')
+            .where('merchant.isVerified = :isVerified', { isVerified: true })
+            .andWhere('merchant.isActive = :isActive', { isActive: true })
+            .andWhere('merchant.latitude BETWEEN :minLat AND :maxLat', { minLat, maxLat })
+            .andWhere('merchant.longitude BETWEEN :minLng AND :maxLng', { minLng, maxLng })
+            .andWhere(`(${haversine_1.calculateHaversineDistance.sql}) <= :radiusKm`)
+            .setParameters({
             userLat,
-            userLng
-        ]);
-        return merchants;
+            userLng,
+            radiusKm,
+        })
+            .orderBy('distance_km', 'ASC')
+            .limit(limit);
+        const merchants = await queryBuilder.getRawMany();
+        return merchants.map((m) => ({
+            id: m.merchant_id,
+            businessName: m.merchant_businessName,
+            category: m.merchant_category,
+            businessLGA: m.merchant_businessLGA,
+            latitude: Number(m.merchant_latitude),
+            longitude: Number(m.merchant_longitude),
+            distanceKm: Number(m.distance_km.toFixed(2)),
+        }));
     }
     calculateDistance(lat1, lon1, lat2, lon2) {
         return haversine_1.calculateHaversineDistance.js(lat1, lon1, lat2, lon2);

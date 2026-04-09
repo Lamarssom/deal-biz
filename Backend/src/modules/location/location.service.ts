@@ -17,35 +17,39 @@ export class LocationService {
     userLng: number,
     radiusKm: number = 3,
     limit: number = 20,
-  ): Promise<Merchant[]> {
-    const { minLat, maxLat, minLng, maxLng } = getBoundingBox(userLat, userLng, radiusKm);
+    ): Promise<any[]> {
 
-    const query = `
-      SELECT *,
-             (${calculateHaversineDistance.sql}) AS distance_km
-      FROM merchants
-      WHERE is_verified = true
-        AND is_active = true
-        AND latitude BETWEEN $1 AND $2
-        AND longitude BETWEEN $3 AND $4
-        AND (${calculateHaversineDistance.sql}) <= $5
-      ORDER BY distance_km ASC
-      LIMIT $6
-    `;
+        const { minLat, maxLat, minLng, maxLng } =
+            getBoundingBox(userLat, userLng, radiusKm);
 
-    const merchants = await this.merchantRepo.query(query, [
-        minLat,        // $1
-        maxLat,        // $2
-        minLng,        // $3
-        maxLng,        // $4
-        radiusKm,      // $5
-        limit,         // $6
-        userLat,       // $7
-        userLng        // $8
-    ]);
+        const queryBuilder = this.merchantRepo
+            .createQueryBuilder('merchant')
+            .addSelect(`(${calculateHaversineDistance.sql})`, 'distance_km')
+            .where('merchant.isVerified = :isVerified', { isVerified: true })
+            .andWhere('merchant.isActive = :isActive', { isActive: true })
+            .andWhere('merchant.latitude BETWEEN :minLat AND :maxLat', { minLat, maxLat })
+            .andWhere('merchant.longitude BETWEEN :minLng AND :maxLng', { minLng, maxLng })
+            .andWhere(`(${calculateHaversineDistance.sql}) <= :radiusKm`)
+            .setParameters({
+            userLat,
+            userLng,
+            radiusKm,
+            })
+            .orderBy('distance_km', 'ASC')
+            .limit(limit);
 
-    return merchants;
-  }
+        const merchants = await queryBuilder.getRawMany();
+
+        return merchants.map((m) => ({
+            id: m.merchant_id,
+            businessName: m.merchant_businessName,
+            category: m.merchant_category,
+            businessLGA: m.merchant_businessLGA,
+            latitude: Number(m.merchant_latitude),
+            longitude: Number(m.merchant_longitude),
+            distanceKm: Number(m.distance_km.toFixed(2)),
+        }));
+    }
 
   // Keep JS version for testing / small datasets
   calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {

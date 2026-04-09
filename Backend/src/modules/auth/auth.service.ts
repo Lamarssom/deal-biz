@@ -14,6 +14,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UsersService } from '../users/users.service';
 import { MerchantsService } from '../merchants/merchants.service';
+import { LgaService } from '../lga/lga.service';
 
 
 @Injectable()
@@ -24,6 +25,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private emailService: EmailService,
+    private lgaService: LgaService,
   ) {}
 
   private generateVerificationCode(): string {
@@ -69,13 +71,13 @@ export class AuthService {
       return { message: 'Verification code resent. Check email.' };
     }
 
-    // New merchant
-    const merchant = this.merchantsService.create({
+    const merchant = await this.merchantsService.create({
       email: dto.email,
       password: hashed,
       role: 'MERCHANT',
       businessName: dto.businessName,
       category: dto.category,
+      businessLGA: dto.businessLGA,
       verificationCode: code,
       verificationExpiresAt: new Date(Date.now() + 15 * 60 * 1000),
     });

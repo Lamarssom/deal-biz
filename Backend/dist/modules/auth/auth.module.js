@@ -7,6 +7,7 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthModule = void 0;
+const typeorm_1 = require("@nestjs/typeorm");
 const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const config_1 = require("@nestjs/config");
@@ -18,12 +19,15 @@ const roles_guard_1 = require("../../common/guards/roles.guard");
 const users_module_1 = require("../users/users.module");
 const merchants_module_1 = require("../merchants/merchants.module");
 const email_module_1 = require("../email/email.module");
+const lga_service_1 = require("../lga/lga.service");
+const lga_entity_1 = require("../../entities/lga.entity");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
 exports.AuthModule = AuthModule = __decorate([
     (0, common_1.Module)({
         imports: [
+            typeorm_1.TypeOrmModule.forFeature([lga_entity_1.LGA]),
             users_module_1.UsersModule,
             merchants_module_1.MerchantsModule,
             email_module_1.EmailModule,
@@ -37,7 +41,7 @@ exports.AuthModule = AuthModule = __decorate([
             }),
         ],
         controllers: [auth_controller_1.AuthController],
-        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard],
+        providers: [auth_service_1.AuthService, lga_service_1.LgaService, jwt_strategy_1.JwtStrategy, jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard],
         exports: [auth_service_1.AuthService, jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard],
     })
 ], AuthModule);

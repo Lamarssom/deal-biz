@@ -50,18 +50,21 @@ const email_service_1 = require("../email/email.service");
 const config_1 = require("@nestjs/config");
 const users_service_1 = require("../users/users.service");
 const merchants_service_1 = require("../merchants/merchants.service");
+const lga_service_1 = require("../lga/lga.service");
 let AuthService = class AuthService {
     usersService;
     merchantsService;
     jwtService;
     configService;
     emailService;
-    constructor(usersService, merchantsService, jwtService, configService, emailService) {
+    lgaService;
+    constructor(usersService, merchantsService, jwtService, configService, emailService, lgaService) {
         this.usersService = usersService;
         this.merchantsService = merchantsService;
         this.jwtService = jwtService;
         this.configService = configService;
         this.emailService = emailService;
+        this.lgaService = lgaService;
     }
     generateVerificationCode() {
         return Math.floor(100000 + Math.random() * 900000).toString();
@@ -94,12 +97,13 @@ let AuthService = class AuthService {
             });
             return { message: 'Verification code resent. Check email.' };
         }
-        const merchant = this.merchantsService.create({
+        const merchant = await this.merchantsService.create({
             email: dto.email,
             password: hashed,
             role: 'MERCHANT',
             businessName: dto.businessName,
             category: dto.category,
+            businessLGA: dto.businessLGA,
             verificationCode: code,
             verificationExpiresAt: new Date(Date.now() + 15 * 60 * 1000),
         });
@@ -183,6 +187,7 @@ exports.AuthService = AuthService = __decorate([
         merchants_service_1.MerchantsService,
         jwt_1.JwtService,
         config_1.ConfigService,
-        email_service_1.EmailService])
+        email_service_1.EmailService,
+        lga_service_1.LgaService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

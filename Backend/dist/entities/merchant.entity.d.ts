@@ -6,6 +6,7 @@ export declare class Merchant {
     role: Role;
     businessName: string;
     category: string;
+    businessLGA: string;
     latitude: number | null;
     longitude: number | null;
     isVerified: boolean;
