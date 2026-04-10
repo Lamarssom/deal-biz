@@ -7,6 +7,7 @@ import { Promotion } from '../../entities/promotion.entity';
 import { Merchant } from '../../entities/merchant.entity';
 import { LocationModule } from '../location/location.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { PromotionsRankingService } from './promotions-ranking.service';
 import { HttpModule } from '@nestjs/axios';
 
 @Module({
@@ -17,7 +18,7 @@ import { HttpModule } from '@nestjs/axios';
     HttpModule,
   ],
   controllers: [PromotionsController],
-  providers: [PromotionsService],
+  providers: [PromotionsService, PromotionsRankingService],
   exports: [PromotionsService],
 })
 export class PromotionsModule {}

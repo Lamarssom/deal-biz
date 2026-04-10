@@ -1,6 +1,6 @@
 //src\modules\promotions\promotions.controller.ts
-import { Controller, Post, Body, UseGuards, Req } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
+import { Controller, Post, Body, UseGuards, Req, Get, Query, Post as WebhookPost } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { PromotionsService } from './promotions.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -20,5 +20,30 @@ export class PromotionsController {
   create(@Req() req: any, @Body() dto: CreatePromotionDto) {
     const merchantId = req.user.id; // from JWT
     return this.promotionsService.createPromotion(merchantId, dto);
+  }
+
+  // New: Deals near you (public or protected)
+  @Get('nearby')
+  @ApiQuery({ name: 'lat', required: true })
+  @ApiQuery({ name: 'lng', required: true })
+  @ApiQuery({ name: 'radius', required: false, example: 5 })
+  async getNearby(@Query('lat') lat: string, @Query('lng') lng: string, @Query('radius') radius = '5') {
+    return this.promotionsService.getNearbyPromotions(
+      parseFloat(lat),
+      parseFloat(lng),
+      parseFloat(radius),
+    );
+  }
+
+  // Paystack webhook (called by Paystack after payment)
+  @WebhookPost('webhook')
+  async paystackWebhook(@Body() body: any) {
+    // Verify signature in production (reuse your payment repo pattern)
+    if (body.event === 'charge.success') {
+      const promoId = body.data.metadata.promotionId;
+      await this.promotionsService.activatePromotion(promoId); // we'll add this method next
+      return { status: 'success' };
+    }
+    return { status: 'ignored' };
   }
 }

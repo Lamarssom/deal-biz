@@ -29,6 +29,17 @@ let PromotionsController = class PromotionsController {
         const merchantId = req.user.id;
         return this.promotionsService.createPromotion(merchantId, dto);
     }
+    async getNearby(lat, lng, radius = '5') {
+        return this.promotionsService.getNearbyPromotions(parseFloat(lat), parseFloat(lng), parseFloat(radius));
+    }
+    async paystackWebhook(body) {
+        if (body.event === 'charge.success') {
+            const promoId = body.data.metadata.promotionId;
+            await this.promotionsService.activatePromotion(promoId);
+            return { status: 'success' };
+        }
+        return { status: 'ignored' };
+    }
 };
 exports.PromotionsController = PromotionsController;
 __decorate([
@@ -41,6 +52,25 @@ __decorate([
     __metadata("design:paramtypes", [Object, create_promotion_dto_1.CreatePromotionDto]),
     __metadata("design:returntype", void 0)
 ], PromotionsController.prototype, "create", null);
+__decorate([
+    (0, common_1.Get)('nearby'),
+    (0, swagger_1.ApiQuery)({ name: 'lat', required: true }),
+    (0, swagger_1.ApiQuery)({ name: 'lng', required: true }),
+    (0, swagger_1.ApiQuery)({ name: 'radius', required: false, example: 5 }),
+    __param(0, (0, common_1.Query)('lat')),
+    __param(1, (0, common_1.Query)('lng')),
+    __param(2, (0, common_1.Query)('radius')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:returntype", Promise)
+], PromotionsController.prototype, "getNearby", null);
+__decorate([
+    (0, common_1.Post)('webhook'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], PromotionsController.prototype, "paystackWebhook", null);
 exports.PromotionsController = PromotionsController = __decorate([
     (0, swagger_1.ApiTags)('Promotions'),
     (0, swagger_1.ApiBearerAuth)(),

@@ -22,6 +22,7 @@ const config_1 = require("@nestjs/config");
 const promotion_entity_1 = require("../../entities/promotion.entity");
 const merchant_entity_1 = require("../../entities/merchant.entity");
 const location_service_1 = require("../location/location.service");
+const promotions_ranking_service_1 = require("./promotions-ranking.service");
 const uuid_1 = require("uuid");
 let PromotionsService = class PromotionsService {
     promotionRepo;
@@ -29,23 +30,32 @@ let PromotionsService = class PromotionsService {
     locationService;
     httpService;
     configService;
-    constructor(promotionRepo, merchantRepo, locationService, httpService, configService) {
+    promotionsRankingService;
+    constructor(promotionRepo, merchantRepo, locationService, httpService, configService, promotionsRankingService) {
         this.promotionRepo = promotionRepo;
         this.merchantRepo = merchantRepo;
         this.locationService = locationService;
         this.httpService = httpService;
         this.configService = configService;
+        this.promotionsRankingService = promotionsRankingService;
     }
     async createPromotion(merchantId, dto) {
-        const merchant = await this.merchantRepo.findOne({ where: { id: merchantId, isVerified: true, isActive: true } });
+        const merchant = await this.merchantRepo.findOne({
+            where: { id: merchantId, isVerified: true, isActive: true },
+        });
         if (!merchant)
             throw new common_1.NotFoundException('Merchant not found or not verified');
         const fee = dto.type === 'STANDARD' ? 100 : 50;
         const radiusKm = dto.type === 'STANDARD' ? 3 : 1;
         const idempotencyKey = dto.idempotencyKey || `promo-${merchantId}-${(0, uuid_1.v4)()}`;
-        const existing = await this.promotionRepo.findOne({ where: { idempotencyKey, merchantId } });
+        const existing = await this.promotionRepo.findOne({
+            where: { idempotencyKey, merchantId },
+        });
         if (existing)
-            return { message: 'Promotion already processed', promotionId: existing.id };
+            return {
+                message: 'Promotion already processed',
+                promotionId: existing.id,
+            };
         const promotion = this.promotionRepo.create({
             merchant,
             merchantId,
@@ -91,6 +101,49 @@ let PromotionsService = class PromotionsService {
             type: dto.type,
         };
     }
+    async getNearbyPromotions(userLat, userLng, radiusKm = 5, limit = 20) {
+        const merchants = await this.locationService.findMerchantsInRadius(userLat, userLng, radiusKm, 100);
+        if (merchants.length === 0)
+            return [];
+        const promotions = await this.promotionRepo.find({
+            where: {
+                merchantId: (0, typeorm_2.In)(merchants.map(m => m.id)),
+                isActive: true,
+                expiry: (0, typeorm_2.MoreThan)(new Date()),
+            },
+            relations: ['merchant'],
+            take: 100,
+        });
+        return this.promotionsRankingService
+            .rankPromotions(userLat, userLng, promotions)
+            .slice(0, limit)
+            .map((promo) => ({
+            id: promo.id,
+            title: promo.title,
+            description: promo.description,
+            type: promo.type,
+            price: Number(promo.price),
+            originalPrice: promo.originalPrice,
+            radiusKm: Number(promo.radiusKm),
+            expiry: promo.expiry,
+            merchant: {
+                id: promo.merchant.id,
+                businessName: promo.merchant.businessName,
+                category: promo.merchant.category,
+                businessLGA: promo.merchant.businessLGA,
+                latitude: Number(promo.merchant.latitude),
+                longitude: Number(promo.merchant.longitude),
+            },
+            stats: {
+                views: promo.views,
+                redeemedCount: promo.redeemedCount,
+            },
+        }));
+    }
+    async activatePromotion(promotionId) {
+        await this.promotionRepo.update(promotionId, { isActive: true });
+        console.log(`✅ Promotion ${promotionId} is now LIVE!`);
+    }
 };
 exports.PromotionsService = PromotionsService;
 exports.PromotionsService = PromotionsService = __decorate([
@@ -101,6 +154,7 @@ exports.PromotionsService = PromotionsService = __decorate([
         typeorm_2.Repository,
         location_service_1.LocationService,
         axios_1.HttpService,
-        config_1.ConfigService])
+        config_1.ConfigService,
+        promotions_ranking_service_1.PromotionsRankingService])
 ], PromotionsService);
 //# sourceMappingURL=promotions.service.js.map

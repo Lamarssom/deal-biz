@@ -15,6 +15,7 @@ const promotion_entity_1 = require("../../entities/promotion.entity");
 const merchant_entity_1 = require("../../entities/merchant.entity");
 const location_module_1 = require("../location/location.module");
 const payments_module_1 = require("../payments/payments.module");
+const promotions_ranking_service_1 = require("./promotions-ranking.service");
 const axios_1 = require("@nestjs/axios");
 let PromotionsModule = class PromotionsModule {
 };
@@ -28,7 +29,7 @@ exports.PromotionsModule = PromotionsModule = __decorate([
             axios_1.HttpModule,
         ],
         controllers: [promotions_controller_1.PromotionsController],
-        providers: [promotions_service_1.PromotionsService],
+        providers: [promotions_service_1.PromotionsService, promotions_ranking_service_1.PromotionsRankingService],
         exports: [promotions_service_1.PromotionsService],
     })
 ], PromotionsModule);

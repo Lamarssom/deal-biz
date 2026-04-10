@@ -1,5 +1,14 @@
 //src\modules\promotions\dto\create-promotion.dto.ts
-import { IsEnum, IsNotEmpty, IsString, IsNumber, IsOptional, IsDateString, Min, MaxLength } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsDateString,
+  Min,
+  MaxLength,
+} from 'class-validator';
 import { PromotionType } from '../../../entities/promotion.entity';
 
 export class CreatePromotionDto {
