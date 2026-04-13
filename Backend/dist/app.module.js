@@ -20,6 +20,7 @@ const payments_module_1 = require("./modules/payments/payments.module");
 const analytics_module_1 = require("./modules/analytics/analytics.module");
 const location_module_1 = require("./modules/location/location.module");
 const database_module_1 = require("./database/database.module");
+const notifications_module_1 = require("./modules/notifications/notifications.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -33,8 +34,8 @@ exports.AppModule = AppModule = __decorate([
                     {
                         ttl: 60000,
                         limit: 10,
-                    }
-                ]
+                    },
+                ],
             }),
             schedule_1.ScheduleModule.forRoot(),
             auth_module_1.AuthModule,
@@ -45,6 +46,7 @@ exports.AppModule = AppModule = __decorate([
             payments_module_1.PaymentsModule,
             analytics_module_1.AnalyticsModule,
             location_module_1.LocationModule,
+            notifications_module_1.NotificationsModule,
         ],
     })
 ], AppModule);

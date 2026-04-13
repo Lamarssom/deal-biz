@@ -45,4 +45,17 @@ export class EmailService {
       this.logger.error('Password reset email failed', err);
     }
   }
+
+  async sendEmail(options: { to: string; subject: string; html: string }) {
+    try {
+      await this.resend.emails.send({
+        from: this.configService.get<string>('EMAIL_FROM')!,
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+      });
+    } catch (err) {
+      this.logger.error('Email send failed', err);
+    }
+  }
 }

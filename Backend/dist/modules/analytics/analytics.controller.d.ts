@@ -7,6 +7,7 @@ export declare class AnalyticsController {
         totalPromotions: number;
         totalRedemptions: number;
         activePromotions: number;
+        expiredPromotions: number;
         estimatedFootTraffic: number;
         promotions: {
             id: string;
@@ -14,6 +15,7 @@ export declare class AnalyticsController {
             type: import("../../entities/promotion.entity").PromotionType;
             redeemedCount: number;
             views: number;
+            conversionRate: number;
             expiry: Date;
         }[];
     }>;

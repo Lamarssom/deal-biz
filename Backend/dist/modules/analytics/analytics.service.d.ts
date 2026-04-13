@@ -9,6 +9,7 @@ export declare class AnalyticsService {
         totalPromotions: number;
         totalRedemptions: number;
         activePromotions: number;
+        expiredPromotions: number;
         estimatedFootTraffic: number;
         promotions: {
             id: string;
@@ -16,6 +17,7 @@ export declare class AnalyticsService {
             type: import("../../entities/promotion.entity").PromotionType;
             redeemedCount: number;
             views: number;
+            conversionRate: number;
             expiry: Date;
         }[];
     }>;

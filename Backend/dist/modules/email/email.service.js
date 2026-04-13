@@ -55,6 +55,19 @@ let EmailService = EmailService_1 = class EmailService {
             this.logger.error('Password reset email failed', err);
         }
     }
+    async sendEmail(options) {
+        try {
+            await this.resend.emails.send({
+                from: this.configService.get('EMAIL_FROM'),
+                to: options.to,
+                subject: options.subject,
+                html: options.html,
+            });
+        }
+        catch (err) {
+            this.logger.error('Email send failed', err);
+        }
+    }
 };
 exports.EmailService = EmailService;
 exports.EmailService = EmailService = EmailService_1 = __decorate([

@@ -13,6 +13,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { LocationModule } from './modules/location/location.module';
 import { DatabaseModule } from './database/database.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -23,8 +24,8 @@ import { DatabaseModule } from './database/database.module';
         {
           ttl: 60000,
           limit: 10,
-        }
-      ]
+        },
+      ],
     }), // 10 req/minute/IP
     ScheduleModule.forRoot(),
 
@@ -36,6 +37,7 @@ import { DatabaseModule } from './database/database.module';
     PaymentsModule,
     AnalyticsModule,
     LocationModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}
