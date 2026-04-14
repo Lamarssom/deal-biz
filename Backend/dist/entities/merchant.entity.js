@@ -18,13 +18,15 @@ let Merchant = class Merchant {
     role;
     businessName;
     category;
-    businessLGA;
     latitude;
     longitude;
+    businessLGA;
     isVerified;
     verificationCode;
     verificationExpiresAt;
     isActive;
+    outstandingBalance;
+    lastInvoicedAt;
     createdAt;
     updatedAt;
 };
@@ -54,10 +56,6 @@ __decorate([
     __metadata("design:type", String)
 ], Merchant.prototype, "category", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
-    __metadata("design:type", String)
-], Merchant.prototype, "businessLGA", void 0);
-__decorate([
     (0, typeorm_1.Column)('decimal', { precision: 10, scale: 6, nullable: true }),
     __metadata("design:type", Object)
 ], Merchant.prototype, "latitude", void 0);
@@ -66,11 +64,15 @@ __decorate([
     __metadata("design:type", Object)
 ], Merchant.prototype, "longitude", void 0);
 __decorate([
+    (0, typeorm_1.Column)(),
+    __metadata("design:type", String)
+], Merchant.prototype, "businessLGA", void 0);
+__decorate([
     (0, typeorm_1.Column)({ default: false }),
     __metadata("design:type", Boolean)
 ], Merchant.prototype, "isVerified", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
+    (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", Object)
 ], Merchant.prototype, "verificationCode", void 0);
 __decorate([
@@ -82,6 +84,14 @@ __decorate([
     __metadata("design:type", Boolean)
 ], Merchant.prototype, "isActive", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'decimal', precision: 12, scale: 2, default: 0 }),
+    __metadata("design:type", Number)
+], Merchant.prototype, "outstandingBalance", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
+    __metadata("design:type", Object)
+], Merchant.prototype, "lastInvoicedAt", void 0);
+__decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], Merchant.prototype, "createdAt", void 0);
@@ -90,7 +100,6 @@ __decorate([
     __metadata("design:type", Date)
 ], Merchant.prototype, "updatedAt", void 0);
 exports.Merchant = Merchant = __decorate([
-    (0, typeorm_1.Entity)('merchants'),
-    (0, typeorm_1.Index)(['latitude', 'longitude'])
+    (0, typeorm_1.Entity)('merchants')
 ], Merchant);
 //# sourceMappingURL=merchant.entity.js.map

@@ -1,52 +1,62 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
-import type { Role } from './user.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity('merchants')
-@Index(['latitude', 'longitude'])
 export class Merchant {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ unique: true })
-  email: string;
+  email!: string;
 
   @Column({ select: false })
-  password: string;
+  password!: string;
 
   @Column({ type: 'enum', enum: ['MERCHANT'], default: 'MERCHANT' })
-  role: Role;
+  role!: 'MERCHANT';
 
   @Column()
-  businessName: string;
+  businessName!: string;
 
   @Column()
-  category: string; // e.g. "Food", "Haircut", "Groceries"
-
-  @Column({ type: 'varchar', nullable: true })
-  businessLGA: string;
+  category!: string;
 
   @Column('decimal', { precision: 10, scale: 6, nullable: true })
-  latitude: number | null;
+  latitude!: number | null;
 
   @Column('decimal', { precision: 10, scale: 6, nullable: true })
-  longitude: number | null;
+  longitude!: number | null;
+
+  @Column()
+  businessLGA!: string; // from your LGA dataset
 
   @Column({ default: false })
-  isVerified: boolean;
+  isVerified!: boolean;
 
-  @Column({ type: 'varchar', nullable: true })
-  verificationCode: string | null;
+  @Column({ nullable: true })
+  verificationCode!: string | null;
 
   @Column({ type: 'timestamp', nullable: true })
-  verificationExpiresAt: Date | null;
+  verificationExpiresAt!: Date | null;
 
   @Column({ default: true })
-  isActive: boolean;
+  isActive!: boolean;
+
+  // === NEW HYBRID FIELDS ===
+  @Column({ type: 'decimal', precision: 12, scale: 2, default: 0 })
+  outstandingBalance!: number; // accumulated 3% success fees
+
+  @Column({ type: 'timestamp', nullable: true })
+  lastInvoicedAt!: Date | null;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
-
+  updatedAt!: Date;
 }
