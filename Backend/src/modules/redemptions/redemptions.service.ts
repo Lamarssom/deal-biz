@@ -134,7 +134,7 @@ export class RedemptionsService {
 
       await manager.update(Merchant, merchant.id, {
         outstandingBalance: merchant.outstandingBalance + successFee,
-      });
+      }
 
       return {
         message: 'Redemption successful!',
