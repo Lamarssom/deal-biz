@@ -9,7 +9,7 @@ import { Repository, In, MoreThan } from 'typeorm';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
-import { Promotion } from '../../entities/promotion.entity';
+import { Promotion, PromotionType } from '../../entities/promotion.entity';
 import { Merchant } from '../../entities/merchant.entity';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { LocationService } from '../location/location.service';
@@ -33,18 +33,45 @@ export class PromotionsService {
     const merchant = await this.merchantRepo.findOne({
       where: { id: merchantId, isVerified: true, isActive: true },
     });
+    if (Number(merchant?.outstandingBalance) >= 5000) {
+      throw new BadRequestException(
+        'Outstanding balance limit reached. Please settle your invoice.',
+      );
+    }
     if (!merchant)
       throw new NotFoundException('Merchant not found or not verified');
 
-    // Auto-set fee & radius based on type (per PDF spec)
-    const fee = dto.type === 'STANDARD' ? 100 : 50;
-    const radiusKm = dto.type === 'STANDARD' ? 3 : 1;
+    // === HYBRID: Flat ₦25 creation fee ===
+    const creationFee = 25;
 
-    // Idempotency
+    // Validate Expiry Date
+    const expiryDate = new Date(dto.expiry);
+    if (expiryDate <= new Date()) {
+      throw new BadRequestException('Expiry must be in the future');
+    }
+
+    const maxDays = 7;
+    const diffMs = expiryDate.getTime() - Date.now();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+    if (diffDays > maxDays) {
+      throw new BadRequestException('Promotion cannot exceed 7 days');
+    }
+
+    // Price slashing validation
+    if (dto.originalPrice && dto.price >= dto.originalPrice) {
+      throw new BadRequestException(
+        'Discounted price must be lower than original price',
+      );
+    }
+
+    // Radius & visibility still respect type (Standard vs Micro)
+    const radiusKm = dto.type === PromotionType.STANDARD ? 3 : 1;
+
+    // Idempotency (reuse your existing pattern)
     const idempotencyKey =
       dto.idempotencyKey || `promo-${merchantId}-${uuidv4()}`;
 
-    // Check if this exact promotion request already exists (idempotency)
     const existing = await this.promotionRepo.findOne({
       where: { idempotencyKey, merchantId },
     });
@@ -54,14 +81,13 @@ export class PromotionsService {
         promotionId: existing.id,
       };
 
-    // Create pending promotion
     const promotion = this.promotionRepo.create({
       merchant,
       merchantId,
       type: dto.type,
-      fee,
-      price: dto.price,
-      originalPrice: dto.originalPrice,
+      fee: creationFee, // now always 25
+      price: Number(dto.price),
+      originalPrice: Number(dto.originalPrice),
       title: dto.title,
       description: dto.description,
       photoUrl: dto.photoUrl,
@@ -69,23 +95,23 @@ export class PromotionsService {
       expiry: new Date(dto.expiry),
       quantityLimit: dto.quantityLimit,
       idempotencyKey,
-      isActive: false, // stays pending until payment confirmed
+      isActive: false, // pending payment
     });
 
     const savedPromo = await this.promotionRepo.save(promotion);
 
-    // === PAYSTACK INITIALIZE ===
+    // Paystack – now for flat ₦25
     const paystackUrl = 'https://api.paystack.co/transaction/initialize';
     const payload = {
-      amount: fee * 100, // kobo
+      amount: creationFee * 100, // kobo
       email: merchant.email,
       reference: idempotencyKey,
       metadata: {
         promotionId: savedPromo.id,
         merchantId,
-        type: dto.type,
+        type: 'creation_fee',
       },
-      callback_url: 'http://localhost:3000/payments/callback', // frontend will handle redirect
+      callback_url: 'http://localhost:3000/payments/callback',
     };
 
     const response = await firstValueFrom(
@@ -97,28 +123,50 @@ export class PromotionsService {
       }),
     );
 
-    const { data } = response.data;
+    type PaystackInitResponse = {
+      data: {
+        reference: string;
+        authorization_url: string;
+      };
+    };
+
+    const paystackResponse = response.data as PaystackInitResponse;
+
+    const reference = paystackResponse.data.reference;
+    const authorizationUrl = paystackResponse.data.authorization_url;
 
     return {
-      message: 'Promotion created – complete payment to go live',
+      message: 'Promotion created – pay ₦25 to go live',
       promotionId: savedPromo.id,
-      paystackReference: data.reference,
-      authorizationUrl: data.authorization_url, // frontend redirects merchant here
-      fee,
+      paystackReference: reference,
+      authorizationUrl,
+      fee: creationFee,
       type: dto.type,
     };
   }
 
-  async getNearbyPromotions(userLat: number, userLng: number, radiusKm: number = 5, limit: number = 20) {
+  async getNearbyPromotions(
+    userLat: number,
+    userLng: number,
+    radiusKm: number = 5,
+    limit: number = 20,
+  ) {
     // 1. Get verified merchants in radius (SQL query from Phase 3)
-    const merchants = await this.locationService.findMerchantsInRadius(userLat, userLng, radiusKm, 100); // get more to rank
+    const merchants = await this.locationService.findMerchantsInRadius(
+      userLat,
+      userLng,
+      radiusKm,
+      100,
+    ); // get more to rank
 
     if (merchants.length === 0) return [];
+
+    const merchantIds: string[] = merchants.map((m) => m.id);
 
     // 2. Get active promotions for these merchants
     const promotions = await this.promotionRepo.find({
       where: {
-        merchantId: In(merchants.map(m => m.id)),
+        merchantId: In(merchantIds),
         isActive: true,
         expiry: MoreThan(new Date()),
       },

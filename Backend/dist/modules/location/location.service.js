@@ -31,8 +31,14 @@ let LocationService = class LocationService {
             .addSelect(`(${haversine_1.calculateHaversineDistance.sql})`, 'distance_km')
             .where('merchant.isVerified = :isVerified', { isVerified: true })
             .andWhere('merchant.isActive = :isActive', { isActive: true })
-            .andWhere('merchant.latitude BETWEEN :minLat AND :maxLat', { minLat, maxLat })
-            .andWhere('merchant.longitude BETWEEN :minLng AND :maxLng', { minLng, maxLng })
+            .andWhere('merchant.latitude BETWEEN :minLat AND :maxLat', {
+            minLat,
+            maxLat,
+        })
+            .andWhere('merchant.longitude BETWEEN :minLng AND :maxLng', {
+            minLng,
+            maxLng,
+        })
             .andWhere(`(${haversine_1.calculateHaversineDistance.sql}) <= :radiusKm`)
             .setParameters({
             userLat,

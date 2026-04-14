@@ -1,7 +1,7 @@
 import { Repository } from 'typeorm';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { Promotion } from '../../entities/promotion.entity';
+import { Promotion, PromotionType } from '../../entities/promotion.entity';
 import { Merchant } from '../../entities/merchant.entity';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { LocationService } from '../location/location.service';
@@ -24,16 +24,16 @@ export declare class PromotionsService {
     } | {
         message: string;
         promotionId: string;
-        paystackReference: any;
-        authorizationUrl: any;
+        paystackReference: string;
+        authorizationUrl: string;
         fee: number;
-        type: import("../../entities/promotion.entity").PromotionType;
+        type: PromotionType;
     }>;
     getNearbyPromotions(userLat: number, userLng: number, radiusKm?: number, limit?: number): Promise<{
         id: string;
         title: string;
         description: string;
-        type: import("../../entities/promotion.entity").PromotionType;
+        type: PromotionType;
         price: number;
         originalPrice: number;
         radiusKm: number;

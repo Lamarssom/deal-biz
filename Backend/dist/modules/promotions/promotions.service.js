@@ -43,10 +43,26 @@ let PromotionsService = class PromotionsService {
         const merchant = await this.merchantRepo.findOne({
             where: { id: merchantId, isVerified: true, isActive: true },
         });
+        if (Number(merchant?.outstandingBalance) >= 5000) {
+            throw new common_1.BadRequestException('Outstanding balance limit reached. Please settle your invoice.');
+        }
         if (!merchant)
             throw new common_1.NotFoundException('Merchant not found or not verified');
-        const fee = dto.type === 'STANDARD' ? 100 : 50;
-        const radiusKm = dto.type === 'STANDARD' ? 3 : 1;
+        const creationFee = 25;
+        const expiryDate = new Date(dto.expiry);
+        if (expiryDate <= new Date()) {
+            throw new common_1.BadRequestException('Expiry must be in the future');
+        }
+        const maxDays = 7;
+        const diffMs = expiryDate.getTime() - Date.now();
+        const diffDays = diffMs / (1000 * 60 * 60 * 24);
+        if (diffDays > maxDays) {
+            throw new common_1.BadRequestException('Promotion cannot exceed 7 days');
+        }
+        if (dto.originalPrice && dto.price >= dto.originalPrice) {
+            throw new common_1.BadRequestException('Discounted price must be lower than original price');
+        }
+        const radiusKm = dto.type === promotion_entity_1.PromotionType.STANDARD ? 3 : 1;
         const idempotencyKey = dto.idempotencyKey || `promo-${merchantId}-${(0, uuid_1.v4)()}`;
         const existing = await this.promotionRepo.findOne({
             where: { idempotencyKey, merchantId },
@@ -60,9 +76,9 @@ let PromotionsService = class PromotionsService {
             merchant,
             merchantId,
             type: dto.type,
-            fee,
-            price: dto.price,
-            originalPrice: dto.originalPrice,
+            fee: creationFee,
+            price: Number(dto.price),
+            originalPrice: Number(dto.originalPrice),
             title: dto.title,
             description: dto.description,
             photoUrl: dto.photoUrl,
@@ -75,13 +91,13 @@ let PromotionsService = class PromotionsService {
         const savedPromo = await this.promotionRepo.save(promotion);
         const paystackUrl = 'https://api.paystack.co/transaction/initialize';
         const payload = {
-            amount: fee * 100,
+            amount: creationFee * 100,
             email: merchant.email,
             reference: idempotencyKey,
             metadata: {
                 promotionId: savedPromo.id,
                 merchantId,
-                type: dto.type,
+                type: 'creation_fee',
             },
             callback_url: 'http://localhost:3000/payments/callback',
         };
@@ -91,13 +107,15 @@ let PromotionsService = class PromotionsService {
                 'Content-Type': 'application/json',
             },
         }));
-        const { data } = response.data;
+        const paystackResponse = response.data;
+        const reference = paystackResponse.data.reference;
+        const authorizationUrl = paystackResponse.data.authorization_url;
         return {
-            message: 'Promotion created – complete payment to go live',
+            message: 'Promotion created – pay ₦25 to go live',
             promotionId: savedPromo.id,
-            paystackReference: data.reference,
-            authorizationUrl: data.authorization_url,
-            fee,
+            paystackReference: reference,
+            authorizationUrl,
+            fee: creationFee,
             type: dto.type,
         };
     }
@@ -105,9 +123,10 @@ let PromotionsService = class PromotionsService {
         const merchants = await this.locationService.findMerchantsInRadius(userLat, userLng, radiusKm, 100);
         if (merchants.length === 0)
             return [];
+        const merchantIds = merchants.map((m) => m.id);
         const promotions = await this.promotionRepo.find({
             where: {
-                merchantId: (0, typeorm_2.In)(merchants.map(m => m.id)),
+                merchantId: (0, typeorm_2.In)(merchantIds),
                 isActive: true,
                 expiry: (0, typeorm_2.MoreThan)(new Date()),
             },

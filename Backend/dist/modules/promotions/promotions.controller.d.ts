@@ -13,8 +13,8 @@ export declare class PromotionsController {
     } | {
         message: string;
         promotionId: string;
-        paystackReference: any;
-        authorizationUrl: any;
+        paystackReference: string;
+        authorizationUrl: string;
         fee: number;
         type: import("../../entities/promotion.entity").PromotionType;
     }>;

@@ -72,7 +72,7 @@ __decorate([
     __metadata("design:type", Boolean)
 ], Merchant.prototype, "isVerified", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
+    (0, typeorm_1.Column)({ type: 'varchar', nullable: true }),
     __metadata("design:type", Object)
 ], Merchant.prototype, "verificationCode", void 0);
 __decorate([

@@ -54,7 +54,7 @@ __decorate([
     __metadata("design:type", String)
 ], Promotion.prototype, "merchantId", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: ['STANDARD', 'MICRO'] }),
+    (0, typeorm_1.Column)({ type: 'enum', enum: PromotionType }),
     __metadata("design:type", String)
 ], Promotion.prototype, "type", void 0);
 __decorate([

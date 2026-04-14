@@ -1,4 +1,3 @@
-//src\modules\promotions\dto\create-promotion.dto.ts
 import {
   IsEnum,
   IsNotEmpty,
@@ -13,12 +12,12 @@ import { PromotionType } from '../../../entities/promotion.entity';
 
 export class CreatePromotionDto {
   @IsEnum(PromotionType)
-  type: PromotionType;
+  type!: PromotionType;
 
   @IsNotEmpty()
   @IsString()
   @MaxLength(100)
-  title: string;
+  title!: string;
 
   @IsOptional()
   @IsString()
@@ -27,7 +26,7 @@ export class CreatePromotionDto {
 
   @IsNumber()
   @Min(0)
-  price: number;
+  price!: number;
 
   @IsOptional()
   @IsNumber()
@@ -36,10 +35,10 @@ export class CreatePromotionDto {
 
   @IsOptional()
   @IsString()
-  photoUrl?: string; // only for STANDARD
+  photoUrl?: string;
 
   @IsDateString()
-  expiry: string;
+  expiry!: string;
 
   @IsNumber()
   @Min(0)

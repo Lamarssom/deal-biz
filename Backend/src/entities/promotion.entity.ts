@@ -19,11 +19,11 @@ export class Promotion {
   @Column({ nullable: false })
   merchantId: string;
 
-  @Column({ type: 'enum', enum: ['STANDARD', 'MICRO'] })
+  @Column({ type: 'enum', enum: PromotionType })
   type: PromotionType;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
-  fee: number; // ₦100 or ₦50
+  fee: number; // ₦25
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   price: number; // deal price
