@@ -18,5 +18,6 @@ export declare class RedemptionsService {
         message: string;
         promotionTitle: string;
         businessName: string;
+        successFeeCharged: number;
     }>;
 }

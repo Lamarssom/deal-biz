@@ -54,6 +54,7 @@ const redemption_entity_1 = require("../../entities/redemption.entity");
 const promotion_entity_1 = require("../../entities/promotion.entity");
 const user_entity_1 = require("../../entities/user.entity");
 const crypto = __importStar(require("crypto"));
+const merchant_entity_1 = require("../../entities/merchant.entity");
 let RedemptionsService = class RedemptionsService {
     redemptionRepo;
     promotionRepo;
@@ -118,6 +119,7 @@ let RedemptionsService = class RedemptionsService {
                 throw new common_1.BadRequestException('Unauthorized redemption attempt');
             }
             const promotion = redemption.promotion;
+            const merchant = promotion.merchant;
             if (promotion.quantityLimit > 0 &&
                 promotion.redeemedCount >= promotion.quantityLimit) {
                 console.warn('Promotion quantity limit reached', {
@@ -126,6 +128,7 @@ let RedemptionsService = class RedemptionsService {
                 });
                 throw new common_1.BadRequestException('Promotion quantity limit reached');
             }
+            const successFee = Math.round(promotion.price * 0.03 * 100) / 100;
             const result = await manager
                 .createQueryBuilder()
                 .update(promotion_entity_1.Promotion)
@@ -140,10 +143,14 @@ let RedemptionsService = class RedemptionsService {
                 isRedeemed: true,
                 redeemedAt: new Date(),
             });
+            await manager.update(merchant_entity_1.Merchant, merchant.id, {
+                outstandingBalance: merchant.outstandingBalance + successFee,
+            });
             return {
                 message: 'Redemption successful!',
                 promotionTitle: promotion.title,
                 businessName: promotion.merchant?.businessName,
+                successFeeCharged: successFee,
             };
         });
     }

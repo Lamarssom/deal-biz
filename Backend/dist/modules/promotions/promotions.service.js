@@ -43,11 +43,11 @@ let PromotionsService = class PromotionsService {
         const merchant = await this.merchantRepo.findOne({
             where: { id: merchantId, isVerified: true, isActive: true },
         });
+        if (!merchant)
+            throw new common_1.NotFoundException('Merchant not found or not verified');
         if (Number(merchant?.outstandingBalance) >= 5000) {
             throw new common_1.BadRequestException('Outstanding balance limit reached. Please settle your invoice.');
         }
-        if (!merchant)
-            throw new common_1.NotFoundException('Merchant not found or not verified');
         const creationFee = 25;
         const expiryDate = new Date(dto.expiry);
         if (expiryDate <= new Date()) {

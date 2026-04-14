@@ -11,6 +11,7 @@ import { Promotion } from '../../entities/promotion.entity';
 import { User } from '../../entities/user.entity';
 import { GenerateQrDto } from './dto/generate-qr.dto';
 import * as crypto from 'crypto';
+import { Merchant } from '../../entities/merchant.entity';
 
 @Injectable()
 export class RedemptionsService {
@@ -80,7 +81,7 @@ export class RedemptionsService {
     return this.promotionRepo.manager.transaction(async (manager) => {
       const redemption = await manager.findOne(Redemption, {
         where: { qrCode, isRedeemed: false },
-        relations: ['promotion', 'promotion.merchant'], // load merchant for response
+        relations: ['promotion', 'promotion.merchant'],
       });
 
       if (!redemption || redemption.isRedeemed) {
@@ -95,6 +96,7 @@ export class RedemptionsService {
       }
 
       const promotion = redemption.promotion;
+      const merchant = promotion.merchant;
 
       // Check quantity limit
       if (
@@ -107,6 +109,9 @@ export class RedemptionsService {
         });
         throw new BadRequestException('Promotion quantity limit reached');
       }
+
+      // 3% Success fee on discounted price
+      const successFee = Math.round(promotion.price * 0.03 * 100) / 100;
 
       // Atomic update
       const result = await manager
@@ -121,15 +126,21 @@ export class RedemptionsService {
         throw new BadRequestException('Promotion quantity limit reached');
       }
 
+
       await manager.update(Redemption, redemption.id, {
         isRedeemed: true,
         redeemedAt: new Date(),
       });
 
+      await manager.update(Merchant, merchant.id, {
+        outstandingBalance: merchant.outstandingBalance + successFee,
+      });
+
       return {
         message: 'Redemption successful!',
         promotionTitle: promotion.title,
-        businessName: promotion.merchant?.businessName, // will be loaded if needed
+        businessName: promotion.merchant?.businessName,
+        successFeeCharged: successFee,
       };
     });
   }

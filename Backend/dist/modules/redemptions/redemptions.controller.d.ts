@@ -15,5 +15,6 @@ export declare class RedemptionsController {
         message: string;
         promotionTitle: string;
         businessName: string;
+        successFeeCharged: number;
     }>;
 }

@@ -33,14 +33,14 @@ export class PromotionsService {
     const merchant = await this.merchantRepo.findOne({
       where: { id: merchantId, isVerified: true, isActive: true },
     });
+    
+    if (!merchant) throw new NotFoundException('Merchant not found or not verified');
+
     if (Number(merchant?.outstandingBalance) >= 5000) {
       throw new BadRequestException(
         'Outstanding balance limit reached. Please settle your invoice.',
       );
     }
-    if (!merchant)
-      throw new NotFoundException('Merchant not found or not verified');
-
     // === HYBRID: Flat ₦25 creation fee ===
     const creationFee = 25;
 
