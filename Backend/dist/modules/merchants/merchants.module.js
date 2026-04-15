@@ -11,13 +11,21 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const merchants_service_1 = require("./merchants.service");
 const merchant_entity_1 = require("../../entities/merchant.entity");
+const merchants_controller_1 = require("./merchants.controller");
 const lga_entity_1 = require("../../entities/lga.entity");
+const axios_1 = require("@nestjs/axios");
+const config_1 = require("@nestjs/config");
 let MerchantsModule = class MerchantsModule {
 };
 exports.MerchantsModule = MerchantsModule;
 exports.MerchantsModule = MerchantsModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([merchant_entity_1.Merchant, lga_entity_1.LGA])],
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([merchant_entity_1.Merchant, lga_entity_1.LGA]),
+            axios_1.HttpModule,
+            config_1.ConfigModule,
+        ],
+        controllers: [merchants_controller_1.MerchantsController],
         providers: [merchants_service_1.MerchantsService],
         exports: [merchants_service_1.MerchantsService],
     })

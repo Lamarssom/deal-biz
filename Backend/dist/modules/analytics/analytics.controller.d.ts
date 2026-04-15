@@ -8,6 +8,8 @@ export declare class AnalyticsController {
         totalRedemptions: number;
         activePromotions: number;
         expiredPromotions: number;
+        outstandingBalance: number;
+        creditLimit: number;
         estimatedFootTraffic: number;
         promotions: {
             id: string;

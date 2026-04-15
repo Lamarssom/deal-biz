@@ -5,9 +5,10 @@ import { AnalyticsController } from './analytics.controller';
 import { AnalyticsService } from './analytics.service';
 import { Promotion } from '../../entities/promotion.entity';
 import { Redemption } from '../../entities/redemption.entity';
+import { Merchant } from '../../entities/merchant.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Promotion, Redemption])],
+  imports: [TypeOrmModule.forFeature([Promotion, Redemption, Merchant])],
   controllers: [AnalyticsController],
   providers: [AnalyticsService],
 })

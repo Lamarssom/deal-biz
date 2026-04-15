@@ -12,6 +12,10 @@ import { User } from '../../entities/user.entity';
 import { GenerateQrDto } from './dto/generate-qr.dto';
 import * as crypto from 'crypto';
 import { Merchant } from '../../entities/merchant.entity';
+import { OnEvent } from '@nestjs/event-emitter';
+import { EVENTS } from '../events/event.types';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+
 
 @Injectable()
 export class RedemptionsService {
@@ -22,6 +26,7 @@ export class RedemptionsService {
     private promotionRepo: Repository<Promotion>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async generateQR(customerId: string, dto: GenerateQrDto) {
@@ -77,17 +82,13 @@ export class RedemptionsService {
   }
 
   async redeem(qrCode: string, merchantId: string) {
-    // Atomic transaction (critical for quantity + redemption record)
-    return this.promotionRepo.manager.transaction(async (manager) => {
+    const result = await this.promotionRepo.manager.transaction(async (manager) => {
       const redemption = await manager.findOne(Redemption, {
         where: { qrCode, isRedeemed: false },
         relations: ['promotion', 'promotion.merchant'],
       });
 
       if (!redemption || redemption.isRedeemed) {
-        console.warn('Fraud attempt: Attempted to redeem invalid QR code', {
-          qrCode,
-        });
         throw new BadRequestException('Invalid or already redeemed QR code');
       }
 
@@ -98,23 +99,16 @@ export class RedemptionsService {
       const promotion = redemption.promotion;
       const merchant = promotion.merchant;
 
-      // Check quantity limit
       if (
         promotion.quantityLimit > 0 &&
         promotion.redeemedCount >= promotion.quantityLimit
       ) {
-        console.warn('Promotion quantity limit reached', {
-          promotionId: promotion.id,
-          attemptedRedemptionId: redemption.id,
-        });
         throw new BadRequestException('Promotion quantity limit reached');
       }
 
-      // 3% Success fee on discounted price
       const successFee = Math.round(promotion.price * 0.03 * 100) / 100;
 
-      // Atomic update
-      const result = await manager
+      const updateResult = await manager
         .createQueryBuilder()
         .update(Promotion)
         .set({ redeemedCount: () => '"redeemedCount" + 1' })
@@ -122,26 +116,46 @@ export class RedemptionsService {
         .andWhere('(quantityLimit = 0 OR "redeemedCount" < "quantityLimit")')
         .execute();
 
-      if (result.affected === 0) {
+      if (updateResult.affected === 0) {
         throw new BadRequestException('Promotion quantity limit reached');
       }
-
 
       await manager.update(Redemption, redemption.id, {
         isRedeemed: true,
         redeemedAt: new Date(),
       });
 
-      await manager.update(Merchant, merchant.id, {
-        outstandingBalance: merchant.outstandingBalance + successFee,
-      }
+      await manager
+        .createQueryBuilder()
+        .update(Merchant)
+        .set({
+          outstandingBalance: () => `"outstandingBalance" + ${successFee}`,
+        })
+        .where("id = :id", { id: merchant.id })
+        .execute();
 
       return {
-        message: 'Redemption successful!',
+        promotionId: promotion.id,
+        merchantId: merchant.id,
+        customerId: redemption.customerId,
         promotionTitle: promotion.title,
-        businessName: promotion.merchant?.businessName,
-        successFeeCharged: successFee,
+        businessName: merchant.businessName,
+        successFee,
       };
     });
+
+    this.eventEmitter.emit(EVENTS.PROMOTION_REDEEMED, {
+      promotionId: result.promotionId,
+      merchantId: result.merchantId,
+      customerId: result.customerId,
+      amount: result.successFee,
+    });
+
+    return {
+      message: 'Redemption successful!',
+      promotionTitle: result.promotionTitle,
+      businessName: result.businessName,
+      successFeeCharged: result.successFee,
+    };
   }
 }

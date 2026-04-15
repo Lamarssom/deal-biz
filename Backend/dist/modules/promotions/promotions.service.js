@@ -24,6 +24,9 @@ const merchant_entity_1 = require("../../entities/merchant.entity");
 const location_service_1 = require("../location/location.service");
 const promotions_ranking_service_1 = require("./promotions-ranking.service");
 const uuid_1 = require("uuid");
+const event_emitter_1 = require("@nestjs/event-emitter");
+const event_types_1 = require("../events/event.types");
+const event_emitter_2 = require("@nestjs/event-emitter");
 let PromotionsService = class PromotionsService {
     promotionRepo;
     merchantRepo;
@@ -31,13 +34,15 @@ let PromotionsService = class PromotionsService {
     httpService;
     configService;
     promotionsRankingService;
-    constructor(promotionRepo, merchantRepo, locationService, httpService, configService, promotionsRankingService) {
+    eventEmitter;
+    constructor(promotionRepo, merchantRepo, locationService, httpService, configService, promotionsRankingService, eventEmitter) {
         this.promotionRepo = promotionRepo;
         this.merchantRepo = merchantRepo;
         this.locationService = locationService;
         this.httpService = httpService;
         this.configService = configService;
         this.promotionsRankingService = promotionsRankingService;
+        this.eventEmitter = eventEmitter;
     }
     async createPromotion(merchantId, dto) {
         const merchant = await this.merchantRepo.findOne({
@@ -89,6 +94,10 @@ let PromotionsService = class PromotionsService {
             isActive: false,
         });
         const savedPromo = await this.promotionRepo.save(promotion);
+        this.eventEmitter.emit(event_types_1.EVENTS.PROMOTION_CREATED, {
+            promotionId: savedPromo.id,
+            merchantId,
+        });
         const paystackUrl = 'https://api.paystack.co/transaction/initialize';
         const payload = {
             amount: creationFee * 100,
@@ -163,8 +172,17 @@ let PromotionsService = class PromotionsService {
         await this.promotionRepo.update(promotionId, { isActive: true });
         console.log(`✅ Promotion ${promotionId} is now LIVE!`);
     }
+    async handlePaymentSuccess(payload) {
+        await this.activatePromotion(payload.promotionId);
+    }
 };
 exports.PromotionsService = PromotionsService;
+__decorate([
+    (0, event_emitter_1.OnEvent)(event_types_1.EVENTS.PAYMENT_SUCCESS),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], PromotionsService.prototype, "handlePaymentSuccess", null);
 exports.PromotionsService = PromotionsService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(promotion_entity_1.Promotion)),
@@ -174,6 +192,7 @@ exports.PromotionsService = PromotionsService = __decorate([
         location_service_1.LocationService,
         axios_1.HttpService,
         config_1.ConfigService,
-        promotions_ranking_service_1.PromotionsRankingService])
+        promotions_ranking_service_1.PromotionsRankingService,
+        event_emitter_2.EventEmitter2])
 ], PromotionsService);
 //# sourceMappingURL=promotions.service.js.map

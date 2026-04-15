@@ -13,12 +13,13 @@ const analytics_controller_1 = require("./analytics.controller");
 const analytics_service_1 = require("./analytics.service");
 const promotion_entity_1 = require("../../entities/promotion.entity");
 const redemption_entity_1 = require("../../entities/redemption.entity");
+const merchant_entity_1 = require("../../entities/merchant.entity");
 let AnalyticsModule = class AnalyticsModule {
 };
 exports.AnalyticsModule = AnalyticsModule;
 exports.AnalyticsModule = AnalyticsModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([promotion_entity_1.Promotion, redemption_entity_1.Redemption])],
+        imports: [typeorm_1.TypeOrmModule.forFeature([promotion_entity_1.Promotion, redemption_entity_1.Redemption, merchant_entity_1.Merchant])],
         controllers: [analytics_controller_1.AnalyticsController],
         providers: [analytics_service_1.AnalyticsService],
     })

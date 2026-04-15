@@ -9,23 +9,15 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PaymentsService = void 0;
-const common_1 = require("@nestjs/common");
-const event_emitter_1 = require("@nestjs/event-emitter");
-let PaymentsService = class PaymentsService {
-    eventEmitter;
-    constructor(eventEmitter) {
-        this.eventEmitter = eventEmitter;
-    }
-    handleSuccessfulPayment(promotionId) {
-        this.eventEmitter.emit('payment.success', {
-            promotionId,
-        });
-    }
-};
-exports.PaymentsService = PaymentsService;
-exports.PaymentsService = PaymentsService = __decorate([
-    (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [event_emitter_1.EventEmitter2])
-], PaymentsService);
-//# sourceMappingURL=payments.service.js.map
+exports.SettleBalanceDto = void 0;
+const class_validator_1 = require("class-validator");
+class SettleBalanceDto {
+    amount;
+}
+exports.SettleBalanceDto = SettleBalanceDto;
+__decorate([
+    (0, class_validator_1.IsNumber)(),
+    (0, class_validator_1.Min)(100),
+    __metadata("design:type", Number)
+], SettleBalanceDto.prototype, "amount", void 0);
+//# sourceMappingURL=settle-balance.dto.js.map

@@ -6,7 +6,6 @@ import { PromotionsService } from './promotions.service';
 import { Promotion } from '../../entities/promotion.entity';
 import { Merchant } from '../../entities/merchant.entity';
 import { LocationModule } from '../location/location.module';
-import { PaymentsModule } from '../payments/payments.module';
 import { PromotionsRankingService } from './promotions-ranking.service';
 import { HttpModule } from '@nestjs/axios';
 
@@ -14,7 +13,6 @@ import { HttpModule } from '@nestjs/axios';
   imports: [
     TypeOrmModule.forFeature([Promotion, Merchant]),
     LocationModule,
-    PaymentsModule,
     HttpModule,
   ],
   controllers: [PromotionsController],

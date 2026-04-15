@@ -55,14 +55,18 @@ const promotion_entity_1 = require("../../entities/promotion.entity");
 const user_entity_1 = require("../../entities/user.entity");
 const crypto = __importStar(require("crypto"));
 const merchant_entity_1 = require("../../entities/merchant.entity");
+const event_types_1 = require("../events/event.types");
+const event_emitter_1 = require("@nestjs/event-emitter");
 let RedemptionsService = class RedemptionsService {
     redemptionRepo;
     promotionRepo;
     userRepo;
-    constructor(redemptionRepo, promotionRepo, userRepo) {
+    eventEmitter;
+    constructor(redemptionRepo, promotionRepo, userRepo, eventEmitter) {
         this.redemptionRepo = redemptionRepo;
         this.promotionRepo = promotionRepo;
         this.userRepo = userRepo;
+        this.eventEmitter = eventEmitter;
     }
     async generateQR(customerId, dto) {
         const promotion = await this.promotionRepo.findOne({
@@ -104,15 +108,12 @@ let RedemptionsService = class RedemptionsService {
         };
     }
     async redeem(qrCode, merchantId) {
-        return this.promotionRepo.manager.transaction(async (manager) => {
+        const result = await this.promotionRepo.manager.transaction(async (manager) => {
             const redemption = await manager.findOne(redemption_entity_1.Redemption, {
                 where: { qrCode, isRedeemed: false },
                 relations: ['promotion', 'promotion.merchant'],
             });
             if (!redemption || redemption.isRedeemed) {
-                console.warn('Fraud attempt: Attempted to redeem invalid QR code', {
-                    qrCode,
-                });
                 throw new common_1.BadRequestException('Invalid or already redeemed QR code');
             }
             if (redemption.promotion.merchantId !== merchantId) {
@@ -122,37 +123,52 @@ let RedemptionsService = class RedemptionsService {
             const merchant = promotion.merchant;
             if (promotion.quantityLimit > 0 &&
                 promotion.redeemedCount >= promotion.quantityLimit) {
-                console.warn('Promotion quantity limit reached', {
-                    promotionId: promotion.id,
-                    attemptedRedemptionId: redemption.id,
-                });
                 throw new common_1.BadRequestException('Promotion quantity limit reached');
             }
             const successFee = Math.round(promotion.price * 0.03 * 100) / 100;
-            const result = await manager
+            const updateResult = await manager
                 .createQueryBuilder()
                 .update(promotion_entity_1.Promotion)
                 .set({ redeemedCount: () => '"redeemedCount" + 1' })
                 .where('id = :id', { id: promotion.id })
                 .andWhere('(quantityLimit = 0 OR "redeemedCount" < "quantityLimit")')
                 .execute();
-            if (result.affected === 0) {
+            if (updateResult.affected === 0) {
                 throw new common_1.BadRequestException('Promotion quantity limit reached');
             }
             await manager.update(redemption_entity_1.Redemption, redemption.id, {
                 isRedeemed: true,
                 redeemedAt: new Date(),
             });
-            await manager.update(merchant_entity_1.Merchant, merchant.id, {
-                outstandingBalance: merchant.outstandingBalance + successFee,
-            });
+            await manager
+                .createQueryBuilder()
+                .update(merchant_entity_1.Merchant)
+                .set({
+                outstandingBalance: () => `"outstandingBalance" + ${successFee}`,
+            })
+                .where("id = :id", { id: merchant.id })
+                .execute();
             return {
-                message: 'Redemption successful!',
+                promotionId: promotion.id,
+                merchantId: merchant.id,
+                customerId: redemption.customerId,
                 promotionTitle: promotion.title,
-                businessName: promotion.merchant?.businessName,
-                successFeeCharged: successFee,
+                businessName: merchant.businessName,
+                successFee,
             };
         });
+        this.eventEmitter.emit(event_types_1.EVENTS.PROMOTION_REDEEMED, {
+            promotionId: result.promotionId,
+            merchantId: result.merchantId,
+            customerId: result.customerId,
+            amount: result.successFee,
+        });
+        return {
+            message: 'Redemption successful!',
+            promotionTitle: result.promotionTitle,
+            businessName: result.businessName,
+            successFeeCharged: result.successFee,
+        };
     }
 };
 exports.RedemptionsService = RedemptionsService;
@@ -163,6 +179,7 @@ exports.RedemptionsService = RedemptionsService = __decorate([
     __param(2, (0, typeorm_1.InjectRepository)(user_entity_1.User)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
-        typeorm_2.Repository])
+        typeorm_2.Repository,
+        event_emitter_1.EventEmitter2])
 ], RedemptionsService);
 //# sourceMappingURL=redemptions.service.js.map

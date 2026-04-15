@@ -40,7 +40,4 @@ export declare class PromotionsController {
             redeemedCount: number;
         };
     }[]>;
-    paystackWebhook(body: any): Promise<{
-        status: string;
-    }>;
 }

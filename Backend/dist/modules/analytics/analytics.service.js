@@ -18,14 +18,18 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const promotion_entity_1 = require("../../entities/promotion.entity");
 const redemption_entity_1 = require("../../entities/redemption.entity");
+const merchant_entity_1 = require("../../entities/merchant.entity");
 let AnalyticsService = class AnalyticsService {
     promotionRepo;
     redemptionRepo;
-    constructor(promotionRepo, redemptionRepo) {
+    merchantRepo;
+    constructor(promotionRepo, redemptionRepo, merchantRepo) {
         this.promotionRepo = promotionRepo;
         this.redemptionRepo = redemptionRepo;
+        this.merchantRepo = merchantRepo;
     }
     async getMerchantAnalytics(merchantId) {
+        const merchant = await this.merchantRepo.findOne({ where: { id: merchantId } });
         const promotions = await this.promotionRepo.find({
             where: { merchantId },
         });
@@ -39,6 +43,8 @@ let AnalyticsService = class AnalyticsService {
             totalRedemptions,
             activePromotions,
             expiredPromotions,
+            outstandingBalance: merchant?.outstandingBalance || 0,
+            creditLimit: 5000,
             estimatedFootTraffic: Math.min(Math.round(totalRedemptions * 1.5), 9999),
             promotions: promotions.map((p) => ({
                 id: p.id,
@@ -57,7 +63,9 @@ exports.AnalyticsService = AnalyticsService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(promotion_entity_1.Promotion)),
     __param(1, (0, typeorm_1.InjectRepository)(redemption_entity_1.Redemption)),
+    __param(2, (0, typeorm_1.InjectRepository)(merchant_entity_1.Merchant)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository])
 ], AnalyticsService);
 //# sourceMappingURL=analytics.service.js.map

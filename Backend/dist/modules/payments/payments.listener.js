@@ -9,23 +9,29 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PaymentsService = void 0;
+exports.PaymentsListener = void 0;
 const common_1 = require("@nestjs/common");
 const event_emitter_1 = require("@nestjs/event-emitter");
-let PaymentsService = class PaymentsService {
-    eventEmitter;
-    constructor(eventEmitter) {
-        this.eventEmitter = eventEmitter;
+const promotions_service_1 = require("../promotions/promotions.service");
+let PaymentsListener = class PaymentsListener {
+    promotionsService;
+    constructor(promotionsService) {
+        this.promotionsService = promotionsService;
     }
-    handleSuccessfulPayment(promotionId) {
-        this.eventEmitter.emit('payment.success', {
-            promotionId,
-        });
+    async handlePaymentSuccess(payload) {
+        await this.promotionsService.activatePromotion(payload.promotionId);
+        console.log('✅ Promotion activated after payment');
     }
 };
-exports.PaymentsService = PaymentsService;
-exports.PaymentsService = PaymentsService = __decorate([
+exports.PaymentsListener = PaymentsListener;
+__decorate([
+    (0, event_emitter_1.OnEvent)('payment.success'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], PaymentsListener.prototype, "handlePaymentSuccess", null);
+exports.PaymentsListener = PaymentsListener = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [event_emitter_1.EventEmitter2])
-], PaymentsService);
-//# sourceMappingURL=payments.service.js.map
+    __metadata("design:paramtypes", [promotions_service_1.PromotionsService])
+], PaymentsListener);
+//# sourceMappingURL=payments.listener.js.map

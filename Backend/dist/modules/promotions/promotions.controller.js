@@ -32,14 +32,6 @@ let PromotionsController = class PromotionsController {
     async getNearby(lat, lng, radius = '5') {
         return this.promotionsService.getNearbyPromotions(parseFloat(lat), parseFloat(lng), parseFloat(radius));
     }
-    async paystackWebhook(body) {
-        if (body.event === 'charge.success') {
-            const promoId = body.data.metadata.promotionId;
-            await this.promotionsService.activatePromotion(promoId);
-            return { status: 'success' };
-        }
-        return { status: 'ignored' };
-    }
 };
 exports.PromotionsController = PromotionsController;
 __decorate([
@@ -64,13 +56,6 @@ __decorate([
     __metadata("design:paramtypes", [String, String, Object]),
     __metadata("design:returntype", Promise)
 ], PromotionsController.prototype, "getNearby", null);
-__decorate([
-    (0, common_1.Post)('webhook'),
-    __param(0, (0, common_1.Body)()),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", Promise)
-], PromotionsController.prototype, "paystackWebhook", null);
 exports.PromotionsController = PromotionsController = __decorate([
     (0, swagger_1.ApiTags)('Promotions'),
     (0, swagger_1.ApiBearerAuth)(),

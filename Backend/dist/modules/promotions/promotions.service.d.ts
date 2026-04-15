@@ -6,6 +6,7 @@ import { Merchant } from '../../entities/merchant.entity';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { LocationService } from '../location/location.service';
 import { PromotionsRankingService } from './promotions-ranking.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 export declare class PromotionsService {
     private promotionRepo;
     private merchantRepo;
@@ -13,7 +14,8 @@ export declare class PromotionsService {
     private httpService;
     private configService;
     private promotionsRankingService;
-    constructor(promotionRepo: Repository<Promotion>, merchantRepo: Repository<Merchant>, locationService: LocationService, httpService: HttpService, configService: ConfigService, promotionsRankingService: PromotionsRankingService);
+    private eventEmitter;
+    constructor(promotionRepo: Repository<Promotion>, merchantRepo: Repository<Merchant>, locationService: LocationService, httpService: HttpService, configService: ConfigService, promotionsRankingService: PromotionsRankingService, eventEmitter: EventEmitter2);
     createPromotion(merchantId: string, dto: CreatePromotionDto): Promise<{
         message: string;
         promotionId: string;
@@ -52,4 +54,7 @@ export declare class PromotionsService {
         };
     }[]>;
     activatePromotion(promotionId: string): Promise<void>;
+    handlePaymentSuccess(payload: {
+        promotionId: string;
+    }): Promise<void>;
 }

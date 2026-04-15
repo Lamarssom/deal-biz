@@ -15,6 +15,9 @@ import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { LocationService } from '../location/location.service';
 import { PromotionsRankingService } from './promotions-ranking.service';
 import { v4 as uuidv4 } from 'uuid';
+import { OnEvent } from '@nestjs/event-emitter';
+import { EVENTS } from '../events/event.types';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class PromotionsService {
@@ -27,6 +30,7 @@ export class PromotionsService {
     private httpService: HttpService,
     private configService: ConfigService,
     private promotionsRankingService: PromotionsRankingService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async createPromotion(merchantId: string, dto: CreatePromotionDto) {
@@ -99,6 +103,11 @@ export class PromotionsService {
     });
 
     const savedPromo = await this.promotionRepo.save(promotion);
+
+    this.eventEmitter.emit(EVENTS.PROMOTION_CREATED, {
+      promotionId: savedPromo.id,
+      merchantId,
+    });
 
     // Paystack – now for flat ₦25
     const paystackUrl = 'https://api.paystack.co/transaction/initialize';
@@ -211,4 +220,10 @@ export class PromotionsService {
     // TODO: send FCM/email notification later
     console.log(`✅ Promotion ${promotionId} is now LIVE!`);
   }
+
+  @OnEvent(EVENTS.PAYMENT_SUCCESS)
+  async handlePaymentSuccess(payload: { promotionId: string }) {
+    await this.activatePromotion(payload.promotionId);
+  }
+
 }

@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Promotion } from '../../entities/promotion.entity';
 import { Redemption } from '../../entities/redemption.entity';
+import { Merchant } from '../../entities/merchant.entity';
 
 @Injectable()
 export class AnalyticsService {
@@ -12,9 +13,13 @@ export class AnalyticsService {
     private promotionRepo: Repository<Promotion>,
     @InjectRepository(Redemption)
     private redemptionRepo: Repository<Redemption>,
+    @InjectRepository(Merchant)
+    private merchantRepo: Repository<Merchant>,
   ) {}
 
   async getMerchantAnalytics(merchantId: string) {
+    const merchant = await this.merchantRepo.findOne({ where: { id: merchantId } });
+
     const promotions = await this.promotionRepo.find({
       where: { merchantId },
     });
@@ -41,6 +46,8 @@ export class AnalyticsService {
       totalRedemptions,
       activePromotions,
       expiredPromotions,
+      outstandingBalance: merchant?.outstandingBalance || 0,
+      creditLimit: 5000,
 
       // ROI metric (safe + capped)
       estimatedFootTraffic: Math.min(Math.round(totalRedemptions * 1.5), 9999),
@@ -53,7 +60,7 @@ export class AnalyticsService {
         redeemedCount: p.redeemedCount,
         views: p.views || 0,
 
-        // 🔥 NEW: conversion rate
+        // NEW: conversion rate
         conversionRate:
           p.views > 0 ? Math.round((p.redeemedCount / p.views) * 100) : 0,
 
