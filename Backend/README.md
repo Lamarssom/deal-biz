@@ -1,6 +1,15 @@
 # Deal-Biz Backend
 
-Hyperlocal promotion platform for small businesses in Nigeria. Merchants create real-time deals (Standard ₦100 / Micro ₦50), customers discover "Deals near you" via GPS + LGA coordinates.
+Hyperlocal Promotion Platform for Small Businesses in Nigeria
+
+Merchants create real-time deals that nearby customers instantly discover.  
+“Deals near you right now” — powered by GPS + Nigerian LGA coordinates.
+
+Updated Revenue Model (Hybrid – as per latest PDF)  
+- ₦25 flat creation fee to publish a promotion (“pay to go live”)  
+- 3% success fee on every redemption (charged automatically)  
+- Credit limit ₦5,000 — new promotions blocked when reached  
+- Auto-invoice every 7 days OR when balance ≥ ₦2,000
 
 Tech Stack (matches your fx-trading-app and payment-webhook-reconciliation-service):
 - NestJS + TypeScript + TypeORM + PostgreSQL
@@ -17,6 +26,7 @@ Phase 3: LGA dataset (8,798 records), merchant location, SQL-optimized Haversine
 Phase 4: Promotion entity (Standard/Micro), creation with Paystack fee, idempotency, ranking (distance + popularity + urgency), nearby deals feed  
 Phase 5: Redemption entity, QR code generation, atomic redeem transaction, quantity limits  
 Phase 6: Merchant analytics dashboard, email notifications (Resend), full Swagger, seeds, production-ready polish
+**Phase 6.1 - ₦25 creation fee + 3% success fee + credit limit + auto-invoicing** 
 
 ## Quick Start
 
@@ -57,8 +67,8 @@ Analytics
 GET /analytics/merchant (merchant dashboard)
 
 Payments Webhook
-
-POST /promotions/webhook (Paystack callback)
+POST /payments/webhook (Paystack callback)
+POST /payments/settle/balance (pay outstanding balance)
 
 Database
 
