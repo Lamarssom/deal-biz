@@ -22,6 +22,8 @@ const analytics_module_1 = require("./modules/analytics/analytics.module");
 const location_module_1 = require("./modules/location/location.module");
 const database_module_1 = require("./database/database.module");
 const notifications_module_1 = require("./modules/notifications/notifications.module");
+const terminus_1 = require("@nestjs/terminus");
+const health_controller_1 = require("./health/health.controller");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -50,6 +52,7 @@ exports.AppModule = AppModule = __decorate([
                     return config;
                 },
             }),
+            terminus_1.TerminusModule,
             database_module_1.DatabaseModule,
             event_emitter_1.EventEmitterModule.forRoot(),
             throttler_1.ThrottlerModule.forRoot({
@@ -57,6 +60,11 @@ exports.AppModule = AppModule = __decorate([
                     {
                         ttl: 60000,
                         limit: 10,
+                        skipIf: (context) => {
+                            const request = context.switchToHttp().getRequest();
+                            return (request.url.includes('/health') ||
+                                request.url.includes('/payments/webhook'));
+                        },
                     },
                 ],
             }),
@@ -71,6 +79,7 @@ exports.AppModule = AppModule = __decorate([
             location_module_1.LocationModule,
             notifications_module_1.NotificationsModule,
         ],
+        controllers: [health_controller_1.HealthController],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map

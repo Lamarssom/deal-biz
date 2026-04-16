@@ -1,3 +1,4 @@
+//src\app.module.ts
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -16,13 +17,14 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { LocationModule } from './modules/location/location.module';
 import { DatabaseModule } from './database/database.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { TerminusModule } from '@nestjs/terminus';
+import { HealthController } from './health/health.controller';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       validate: (config: Record<string, any>) => {
-        // Critical keys that must exist
         if (!config.DB_HOST) throw new Error('DB_HOST is required');
         if (!config.DB_PORT) throw new Error('DB_PORT is required');
         if (!config.DB_USERNAME) throw new Error('DB_USERNAME is required');
@@ -37,18 +39,33 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
         return config;
       },
     }),
+
+    // Health checks
+    TerminusModule,
+
     DatabaseModule,
     EventEmitterModule.forRoot(),
+
+    // Rate limiting - webhook skipped
     ThrottlerModule.forRoot({
       throttlers: [
         {
-          ttl: 60000,
-          limit: 10,
+          ttl: 60000, // 60 seconds
+          limit: 10, // 10 requests per minute per IP (you can increase later)
+          skipIf: (context) => {
+            const request = context.switchToHttp().getRequest();
+            return (
+              request.url.includes('/health') ||
+              request.url.includes('/payments/webhook')
+            );
+          },
         },
       ],
-    }), // 10 req/minute/IP
+    }),
+
     ScheduleModule.forRoot(),
 
+    // Your feature modules
     AuthModule,
     UsersModule,
     MerchantsModule,
@@ -59,5 +76,6 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     LocationModule,
     NotificationsModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}
