@@ -33,10 +33,11 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.typeOrmConfig = void 0;
+exports.AppDataSource = exports.dataSourceOptions = void 0;
+const typeorm_1 = require("typeorm");
 const dotenv = __importStar(require("dotenv"));
 dotenv.config();
-exports.typeOrmConfig = {
+exports.dataSourceOptions = {
     type: 'postgres',
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432'),
@@ -44,12 +45,12 @@ exports.typeOrmConfig = {
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME || 'deal_biz',
     entities: [__dirname + '/../entities/*.entity{.ts,.js}'],
-    synchronize: false,
     migrations: ['dist/migrations/*.js'],
-    migrationsRun: true,
+    synchronize: false,
     logging: process.env.NODE_ENV === 'development',
     ssl: process.env.NODE_ENV === 'production'
         ? { rejectUnauthorized: false }
         : undefined,
 };
-//# sourceMappingURL=typeorm.config.js.map
+exports.AppDataSource = new typeorm_1.DataSource(exports.dataSourceOptions);
+//# sourceMappingURL=data-source.js.map

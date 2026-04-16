@@ -19,7 +19,24 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validate: (config: Record<string, any>) => {
+        // Critical keys that must exist
+        if (!config.DB_HOST) throw new Error('DB_HOST is required');
+        if (!config.DB_PORT) throw new Error('DB_PORT is required');
+        if (!config.DB_USERNAME) throw new Error('DB_USERNAME is required');
+        if (!config.DB_PASSWORD) throw new Error('DB_PASSWORD is required');
+        if (!config.DB_NAME) throw new Error('DB_NAME is required');
+        if (!config.JWT_SECRET) throw new Error('JWT_SECRET is required');
+        if (!config.PAYSTACK_SECRET_KEY)
+          throw new Error('PAYSTACK_SECRET_KEY is required');
+        if (!config.PAYSTACK_PUBLIC_KEY)
+          throw new Error('PAYSTACK_PUBLIC_KEY is required');
+
+        return config;
+      },
+    }),
     DatabaseModule,
     EventEmitterModule.forRoot(),
     ThrottlerModule.forRoot({

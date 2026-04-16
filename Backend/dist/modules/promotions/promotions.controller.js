@@ -28,6 +28,7 @@ let PromotionsController = class PromotionsController {
     create(req, dto) {
         const merchantId = req.user.id;
         return this.promotionsService.createPromotion(merchantId, dto);
+        console.log('BODY RECEIVED:', common_1.Body);
     }
     async getNearby(lat, lng, radius = '5') {
         return this.promotionsService.getNearbyPromotions(parseFloat(lat), parseFloat(lng), parseFloat(radius));
@@ -37,7 +38,10 @@ exports.PromotionsController = PromotionsController;
 __decorate([
     (0, common_1.Post)(),
     (0, roles_decorator_1.Roles)('MERCHANT'),
-    (0, swagger_1.ApiResponse)({ status: 201, description: 'Promotion created – Paystack payment required' }),
+    (0, swagger_1.ApiResponse)({
+        status: 201,
+        description: 'Promotion created – Paystack payment required',
+    }),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
