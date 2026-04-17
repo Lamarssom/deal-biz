@@ -11,7 +11,9 @@ const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const schedule_1 = require("@nestjs/schedule");
 const throttler_1 = require("@nestjs/throttler");
+const core_1 = require("@nestjs/core");
 const event_emitter_1 = require("@nestjs/event-emitter");
+const terminus_1 = require("@nestjs/terminus");
 const auth_module_1 = require("./modules/auth/auth.module");
 const users_module_1 = require("./modules/users/users.module");
 const merchants_module_1 = require("./modules/merchants/merchants.module");
@@ -22,8 +24,8 @@ const analytics_module_1 = require("./modules/analytics/analytics.module");
 const location_module_1 = require("./modules/location/location.module");
 const database_module_1 = require("./database/database.module");
 const notifications_module_1 = require("./modules/notifications/notifications.module");
-const terminus_1 = require("@nestjs/terminus");
 const health_controller_1 = require("./health/health.controller");
+const throttler_2 = require("@nestjs/throttler");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -59,11 +61,12 @@ exports.AppModule = AppModule = __decorate([
                 throttlers: [
                     {
                         ttl: 60000,
-                        limit: 10,
+                        limit: 100,
                         skipIf: (context) => {
                             const request = context.switchToHttp().getRequest();
-                            return (request.url.includes('/health') ||
-                                request.url.includes('/payments/webhook'));
+                            const url = request.url || '';
+                            return (url.includes('/health') ||
+                                url.includes('/payments/webhook'));
                         },
                     },
                 ],
@@ -80,6 +83,12 @@ exports.AppModule = AppModule = __decorate([
             notifications_module_1.NotificationsModule,
         ],
         controllers: [health_controller_1.HealthController],
+        providers: [
+            {
+                provide: core_1.APP_GUARD,
+                useClass: throttler_2.ThrottlerGuard,
+            },
+        ],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map

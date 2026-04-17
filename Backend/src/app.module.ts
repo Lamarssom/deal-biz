@@ -1,11 +1,11 @@
-//src\app.module.ts
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { TerminusModule } from '@nestjs/terminus';
 
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -17,8 +17,8 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { LocationModule } from './modules/location/location.module';
 import { DatabaseModule } from './database/database.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
-import { TerminusModule } from '@nestjs/terminus';
 import { HealthController } from './health/health.controller';
+import { ThrottlerGuard } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -31,32 +31,29 @@ import { HealthController } from './health/health.controller';
         if (!config.DB_PASSWORD) throw new Error('DB_PASSWORD is required');
         if (!config.DB_NAME) throw new Error('DB_NAME is required');
         if (!config.JWT_SECRET) throw new Error('JWT_SECRET is required');
-        if (!config.PAYSTACK_SECRET_KEY)
-          throw new Error('PAYSTACK_SECRET_KEY is required');
-        if (!config.PAYSTACK_PUBLIC_KEY)
-          throw new Error('PAYSTACK_PUBLIC_KEY is required');
+        if (!config.PAYSTACK_SECRET_KEY) throw new Error('PAYSTACK_SECRET_KEY is required');
+        if (!config.PAYSTACK_PUBLIC_KEY) throw new Error('PAYSTACK_PUBLIC_KEY is required');
 
         return config;
       },
     }),
 
-    // Health checks
     TerminusModule,
-
     DatabaseModule,
     EventEmitterModule.forRoot(),
 
-    // Rate limiting - webhook skipped
+    //Rate Limiting Configuration
     ThrottlerModule.forRoot({
       throttlers: [
         {
-          ttl: 60000, // 60 seconds
-          limit: 10, // 10 requests per minute per IP (you can increase later)
+          ttl: 60000,   // 60 seconds
+          limit: 100,   // 100 requests per minute per IP (global default)
           skipIf: (context) => {
             const request = context.switchToHttp().getRequest();
+            const url = request.url || '';
             return (
-              request.url.includes('/health') ||
-              request.url.includes('/payments/webhook')
+              url.includes('/health') ||
+              url.includes('/payments/webhook')
             );
           },
         },
@@ -65,7 +62,7 @@ import { HealthController } from './health/health.controller';
 
     ScheduleModule.forRoot(),
 
-    // Your feature modules
+    // Feature modules
     AuthModule,
     UsersModule,
     MerchantsModule,
@@ -77,5 +74,11 @@ import { HealthController } from './health/health.controller';
     NotificationsModule,
   ],
   controllers: [HealthController],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

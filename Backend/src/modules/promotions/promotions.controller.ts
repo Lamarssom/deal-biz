@@ -8,6 +8,7 @@ import {
   Get,
   Query,
 } from '@nestjs/common';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { ApiTags, ApiBearerAuth, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { PromotionsService } from './promotions.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';
@@ -23,6 +24,7 @@ export class PromotionsController {
   constructor(private promotionsService: PromotionsService) {}
 
   @Post()
+  @Throttle ({ default: { ttl: 60, limit: 10 }  })
   @Roles('MERCHANT')
   @ApiResponse({
     status: 201,
@@ -36,6 +38,7 @@ export class PromotionsController {
 
   // New: Deals near you (public or protected)
   @Get('nearby')
+  @Throttle ({ default: { ttl: 60, limit: 40 }  })
   @ApiQuery({ name: 'lat', required: true })
   @ApiQuery({ name: 'lng', required: true })
   @ApiQuery({ name: 'radius', required: false, example: 5 })

@@ -7,6 +7,7 @@ import {
   Get,
   Query,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { PaymentsService } from './payments.service';
 import { MerchantsService } from '../merchants/merchants.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -24,6 +25,7 @@ export class PaymentsController {
   ) {}
 
   @Post('webhook')
+  @SkipThrottle()
   async paystackWebhook(
     @Req() req: Request,
     @Body() body: any,

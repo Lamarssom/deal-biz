@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PromotionsController = void 0;
 const common_1 = require("@nestjs/common");
+const throttler_1 = require("@nestjs/throttler");
 const swagger_1 = require("@nestjs/swagger");
 const promotions_service_1 = require("./promotions.service");
 const create_promotion_dto_1 = require("./dto/create-promotion.dto");
@@ -37,6 +38,7 @@ let PromotionsController = class PromotionsController {
 exports.PromotionsController = PromotionsController;
 __decorate([
     (0, common_1.Post)(),
+    (0, throttler_1.Throttle)({ default: { ttl: 60, limit: 10 } }),
     (0, roles_decorator_1.Roles)('MERCHANT'),
     (0, swagger_1.ApiResponse)({
         status: 201,
@@ -50,6 +52,7 @@ __decorate([
 ], PromotionsController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)('nearby'),
+    (0, throttler_1.Throttle)({ default: { ttl: 60, limit: 40 } }),
     (0, swagger_1.ApiQuery)({ name: 'lat', required: true }),
     (0, swagger_1.ApiQuery)({ name: 'lng', required: true }),
     (0, swagger_1.ApiQuery)({ name: 'radius', required: false, example: 5 }),

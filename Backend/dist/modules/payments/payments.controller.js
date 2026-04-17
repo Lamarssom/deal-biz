@@ -47,6 +47,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PaymentsController = void 0;
 const common_1 = require("@nestjs/common");
+const throttler_1 = require("@nestjs/throttler");
 const payments_service_1 = require("./payments.service");
 const merchants_service_1 = require("../merchants/merchants.service");
 const event_emitter_1 = require("@nestjs/event-emitter");
@@ -112,6 +113,7 @@ let PaymentsController = class PaymentsController {
 exports.PaymentsController = PaymentsController;
 __decorate([
     (0, common_1.Post)('webhook'),
+    (0, throttler_1.SkipThrottle)(),
     __param(0, (0, common_1.Req)()),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Headers)('x-paystack-signature')),
