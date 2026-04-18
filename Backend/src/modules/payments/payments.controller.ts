@@ -14,6 +14,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import type { Request } from 'express';
+import { EVENTS } from '../events/event.types';
 
 @Controller('payments')
 export class PaymentsController {
@@ -72,10 +73,8 @@ export class PaymentsController {
         );
 
         // Emit event so your PromotionsModule can activate it
-        this.eventEmitter.emit('payment.success', { promotionId });
+        this.eventEmitter.emit(EVENTS.PAYMENT_SUCCESS, { promotionId });
 
-        // Optional: You can also call a service method directly here
-        // await this.paymentsService.handleSuccessfulPromotionPayment(promotionId);
       } else {
         console.log(
           'Webhook received but no matching metadata for promotion creation',

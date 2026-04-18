@@ -44,10 +44,11 @@ async function bootstrap() {
 
   // Enable raw body ONLY for webhook (must come before global json parser if needed)
   app.use(
-    '/payments/webhook',
     express.json({
       verify: (req: any, res: any, buf: Buffer) => {
-        req.rawBody = buf;
+        if (req.originalUrl === '/payments/webhook') {
+          req.rawBody = buf;
+        }
       },
     }),
   );

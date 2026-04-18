@@ -54,6 +54,18 @@ export class Merchant {
   @Column({ type: 'timestamp', nullable: true })
   lastInvoicedAt!: Date | null;
 
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  dailySpendThisDay!: number;
+
+  @Column({ type: 'timestamp', nullable: true })
+  dailyResetAt!: Date | null;
+
+  @Column({ type: 'int', default: 5 })
+  dailyPromoLimit!: number;   // = 5/day
+
+  @Column({ default: 3 })
+  maxActivePromos!: number;   // max 3 active
+
   @CreateDateColumn()
   createdAt!: Date;
 

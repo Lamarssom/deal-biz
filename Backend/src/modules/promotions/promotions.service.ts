@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In, MoreThan } from 'typeorm';
+import { Repository, In, MoreThan, MoreThanOrEqual } from 'typeorm';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { ConfigService } from '@nestjs/config';
@@ -37,14 +37,60 @@ export class PromotionsService {
     const merchant = await this.merchantRepo.findOne({
       where: { id: merchantId, isVerified: true, isActive: true },
     });
-    
-    if (!merchant) throw new NotFoundException('Merchant not found or not verified');
 
+    if (!merchant)
+      throw new NotFoundException('Merchant not found or not verified');
+
+    // Credit Limit Check
     if (Number(merchant?.outstandingBalance) >= 5000) {
       throw new BadRequestException(
         'Outstanding balance limit reached. Please settle your invoice.',
       );
     }
+
+    // Daily Reset Logic
+    const now = new Date();
+    if (
+      !merchant.dailyResetAt ||
+      merchant.dailyResetAt.getDate() !== now.getDate()
+    ) {
+      merchant.dailySpendThisDay = 0;
+      merchant.dailyResetAt = now;
+      await this.merchantRepo.save(merchant);
+    }
+
+    //Daily Promo Cap
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const todayPromos = await this.promotionRepo.count({
+      where: {
+        merchantId,
+        createdAt: MoreThanOrEqual(todayStart),
+      },
+    });
+    if (todayPromos >= merchant.dailyPromoLimit) {
+      throw new BadRequestException(
+        `Daily promo limit reached (${merchant.dailyPromoLimit}/day)`,
+      );
+    }
+
+    // Max of 3 activve promos
+    const activePromos = await this.promotionRepo.count({
+      where: {
+        merchantId,
+        isActive: true,
+        expiry: MoreThan(now),
+      },
+    });
+    if (activePromos >= merchant.maxActivePromos) {
+      throw new BadRequestException(
+        'Maximum 3 active promotions allowed. Expire or delete one first.',
+      );
+    }
+
     // === HYBRID: Flat ₦25 creation fee ===
     const creationFee = 25;
 
@@ -216,8 +262,19 @@ export class PromotionsService {
   }
 
   async activatePromotion(promotionId: string) {
+    const promo = await this.promotionRepo.findOne({
+      where: { id: promotionId },
+    });
+    if (!promo) {
+      console.error(`Promotion ${promotionId} not found`);
+      return;
+    }
+    if (promo.isActive) {
+      console.log(`Promotion ${promotionId} already active`);
+      return;
+    }
+
     await this.promotionRepo.update(promotionId, { isActive: true });
-    // TODO: send FCM/email notification later
     console.log(`✅ Promotion ${promotionId} is now LIVE!`);
   }
 
@@ -225,5 +282,4 @@ export class PromotionsService {
   async handlePaymentSuccess(payload: { promotionId: string }) {
     await this.activatePromotion(payload.promotionId);
   }
-
 }
