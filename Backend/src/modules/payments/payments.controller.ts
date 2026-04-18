@@ -72,8 +72,7 @@ export class PaymentsController {
           `Processing successful payment for promotion: ${promotionId}`,
         );
 
-        // Emit event so your PromotionsModule can activate it
-        this.eventEmitter.emit(EVENTS.PAYMENT_SUCCESS, { promotionId });
+        await this.paymentsService.handleSuccessfulPayment(promotionId);
 
       } else {
         console.log(
