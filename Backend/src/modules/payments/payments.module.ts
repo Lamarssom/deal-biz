@@ -10,5 +10,6 @@ import { PromotionsModule } from '../promotions/promotions.module';
   imports: [MerchantsModule, PromotionsModule],
   controllers: [PaymentsController],
   providers: [PaymentsService, PaymentsListener],
+  exports: [PaymentsService],
 })
 export class PaymentsModule {}
