@@ -42,5 +42,12 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+  _flutter.loader.load({
+    config: {
+      renderer: "canvaskit",
+    }
+  });
+</script>
 </body>
 </html>
