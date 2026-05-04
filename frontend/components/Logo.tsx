@@ -1,28 +1,41 @@
 import React from 'react';
-import { Svg, Ellipse, Path, Text } from 'react-native-svg';
+import { Svg, Ellipse, Text, G } from 'react-native-svg';
 
-export default function Logo({ width = 280, height = 120 }: { width?: number; height?: number }) {
+export default function Logo({ 
+  width = 260, 
+  height = 145,
+  showText = true 
+}: { 
+  width?: number; 
+  height?: number;
+  showText?: boolean;
+}) {
   return (
     <Svg width={width} height={height} viewBox="0 0 428 160" fill="none">
-      {/* Blue Circle */}
-      <Ellipse cx="214.5" cy="80" rx="40" ry="39" fill="#1C8EDA" />
+      <G>
+        <Ellipse 
+          cx="214" 
+          cy="78" 
+          rx="42" 
+          ry="41" 
+          fill="#1C8EDA" 
+        />
 
-      {/* Sharp Deals Text - Faithful to SVG */}
-      <Path
-        d="M103.64 116.28C101.587 116.28 99.7467 115.947 98.12 115.28C96.4933 114.613 95.1867 113.627 94.2 112.32C93.24 111.013 92.7333 109.44 92.68 107.6H99.96C100.067 108.64 100.427 109.44 101.04 110C101.653 110.533 102.453 110.8 103.44 110.8C104.453 110.8 105.253 110.573 105.84 110.12C106.427 109.64 106.72 108.987 106.72 108.16C106.72 107.467 106.48 106.893 106 106.44C105.547 105.987 104.973 105.613 104.28 105.32C103.613 105.027 102.653 104.693 101.4 104.32C99.5867 103.76 98.1067 103.2 96.96 102.64C95.8133 102.08 94.8267 101.253 94 100.16C93.1733 99.067 92.76 97.64 92.76 95.88C92.76 93.267 93.7067 91.227 95.6 89.76C97.4933 88.267 99.96 87.52 103 87.52C106.093 87.52 108.587 88.267 110.48 89.76C112.373 91.227 113.387 93.28 113.52 95.92H106.12C106.067 95.013 105.733 94.307 105.12 93.8C104.507 93.267 103.72 93 102.76 93C101.933 93 101.267 93.227 100.76 93.68C100.253 94.107 100 94.733 100 95.56C100 96.467 100.427 97.173 101.28 97.68C102.133 98.187 103.467 98.733 105.28 99.32C107.093 99.933 108.56 100.52 109.68 101.08C110.827 101.64 111.813 102.453 112.64 103.52C113.467 104.587 113.88 105.96 113.88 107.64C113.88 109.24 113.467 110.693 112.64 112C111.84 113.307 110.667 114.347 109.12 115.12C107.573 115.893 105.747 116.28 103.64 116.28Z"
-        fill="black"
-      />
-      {/* You can add more paths for "Sharp Deals" if needed - this is the main part */}
-      <Text
-        x="140"
-        y="105"
-        fill="black"
-        fontSize="28"
-        fontWeight="700"
-        fontFamily="System"
-      >
-        Deals
-      </Text>
+        {showText && (
+          <Text
+            x="214"
+            y="152"
+            fill="#0F172A"
+            fontSize="36"
+            fontWeight="700"
+            fontFamily="System"
+            textAnchor="middle"           
+            alignmentBaseline="middle"
+          >
+            Yudeel
+          </Text>
+        )}
+      </G>
     </Svg>
   );
 }

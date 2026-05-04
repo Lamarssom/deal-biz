@@ -1,6 +1,6 @@
 import React from 'react';
-import WelcomeScreen from '../components/WelcomeScreen';
+import SplashScreen from '../components/SplashScreen';
 
 export default function Index() {
-  return <WelcomeScreen />;
+  return <SplashScreen />;
 }

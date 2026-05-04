@@ -1,0 +1,147 @@
+// styles/signup.styles.ts
+import { StyleSheet } from 'react-native';
+
+export const signupStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 40,
+  },
+  headerContainer: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#0F172A',
+    textAlign: 'center',
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 24,
+    maxWidth: 300,
+  },
+  formCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 32,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 8,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  input: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#0F172A',
+  },
+  createButton: {
+    marginTop: 32,
+    backgroundColor: '#1C8EDA',
+    paddingVertical: 18,
+    borderRadius: 999,
+    alignItems: 'center',
+  },
+  createButtonText: {
+    color: 'white',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  orText: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 28,
+    marginBottom: 16,
+  },
+  socialContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  socialButton: {
+    width: 52,
+    height: 52,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 32,
+  },
+  footerText: {
+    color: '#64748B',
+  },
+  loginLink: {
+    color: '#1C8EDA',
+    fontWeight: '600',
+  },
+    roleContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 28,
+  },
+  roleCard: {
+    flex: 1,
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 2,
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  roleCardSelected: {
+    borderColor: '#1C8EDA',
+    backgroundColor: '#F0F9FF',
+  },
+  roleIcon: {
+    marginBottom: 12,
+  },
+  roleTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0F172A',
+    textAlign: 'center',
+  },
+});

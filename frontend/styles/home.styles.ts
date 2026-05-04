@@ -1,0 +1,86 @@
+// styles/home.styles.ts
+import { StyleSheet } from 'react-native';
+
+export const homeStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 20,
+  },
+  greeting: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginTop: 4,
+  },
+  logoutButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+  },
+  logoutText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  searchContainer: {
+    marginHorizontal: 24,
+    marginBottom: 24,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginHorizontal: 24,
+    marginBottom: 16,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    marginHorizontal: 24,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  dealCard: {
+    backgroundColor: '#1C8EDA',
+    borderRadius: 24,
+    padding: 20,
+    marginHorizontal: 24,
+    marginBottom: 16,
+  },
+});

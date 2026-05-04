@@ -1,58 +1,83 @@
-
 import React from 'react';
-import { ScrollView, View, Text, TouchableOpacity } from 'react-native';
+import { ScrollView, View, Text, TouchableOpacity, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Feather } from '@expo/vector-icons';
+import { homeStyles } from '../styles/home.styles';
 
 export default function HomeScreen() {
   const router = useRouter();
 
   return (
-    <ScrollView
-      className="flex-1 bg-slate-50"
-      contentContainerStyle={{ paddingTop: 40, paddingHorizontal: 24, paddingBottom: 40 }}
-    >
-      <View className="flex-row items-start justify-between mb-8">
+    <ScrollView style={homeStyles.container} showsVerticalScrollIndicator={false}>
+      {/* Header */}
+      <View style={homeStyles.header}>
         <View>
-          <Text className="text-sm text-slate-500">Good morning</Text>
-          <Text className="text-3xl font-semibold text-slate-900 mt-1">Find your next deal</Text>
+          <Text style={homeStyles.greeting}>Good morning,</Text>
+          <Text style={homeStyles.title}>Chief 👋</Text>
         </View>
-        <TouchableOpacity
-          className="rounded-full border border-slate-200 bg-white px-4 py-3"
-          activeOpacity={0.85}
-          onPress={() => router.replace('/login')}
-        >
-          <Text className="text-sm font-semibold text-slate-700">Logout</Text>
+
+        <TouchableOpacity style={homeStyles.logoutButton} onPress={() => router.replace('/login')}>
+          <Text style={homeStyles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
 
-      <View className="rounded-[32px] bg-white p-6 shadow-md shadow-slate-200 mb-6">
-        <Text className="text-lg font-semibold text-slate-900">Local deals just for you</Text>
-        <Text className="text-sm text-slate-600 mt-3 leading-6">
-          Explore nearby promotions, save favorites, and redeem offers from merchants in your area.
-        </Text>
+      {/* Search Bar */}
+      <View style={homeStyles.searchContainer}>
+        <Feather name="search" size={22} color="#64748B" />
+        <TextInput
+          style={homeStyles.searchInput}
+          placeholder="Search deals, merchants..."
+          placeholderTextColor="#94A3B8"
+        />
       </View>
 
-      <View className="space-y-4">
-        <View className="rounded-[28px] bg-white p-5 shadow-sm shadow-slate-200">
-          <Text className="text-base font-semibold text-slate-900">Featured deal</Text>
-          <Text className="text-sm text-slate-600 mt-3 leading-6">
-            ₦1,500 off on your next order from a top merchant. Valid for today only.
-          </Text>
-        </View>
+      {/* Featured / Hero Deal */}
+      <View style={homeStyles.dealCard}>
+        <Text style={{ color: 'white', fontSize: 15, fontWeight: '600', marginBottom: 8 }}>
+          TODAY'S BEST DEAL
+        </Text>
+        <Text style={{ color: 'white', fontSize: 24, fontWeight: '700', marginBottom: 12 }}>
+          ₦2,000 OFF
+        </Text>
+        <Text style={{ color: '#E0F2FE', fontSize: 16 }}>
+          on orders above ₦8,000 from selected merchants
+        </Text>
+        <TouchableOpacity style={{ marginTop: 20, backgroundColor: 'white', alignSelf: 'flex-start', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999 }}>
+          <Text style={{ color: '#1C8EDA', fontWeight: '600' }}>Claim Deal</Text>
+        </TouchableOpacity>
+      </View>
 
-        <View className="rounded-[28px] bg-sky-600 p-5 shadow-sm shadow-sky-200">
-          <Text className="text-base font-semibold text-white">Nearby promotions</Text>
-          <Text className="text-sm text-sky-100 mt-3 leading-6">
-            Browse real-time offers with distance, merchant ratings, and limited-time countdowns.
+      {/* Nearby Promotions */}
+      <Text style={homeStyles.sectionTitle}>Nearby Promotions</Text>
+      
+      {[1, 2, 3].map((item) => (
+        <View key={item} style={homeStyles.card}>
+          <Text style={{ fontSize: 18, fontWeight: '600', color: '#0F172A' }}>
+            25% Off Chicken & Chips
+          </Text>
+          <Text style={{ color: '#64748B', marginTop: 4 }}>Mama's Kitchen • 1.2km away</Text>
+          <Text style={{ color: '#1C8EDA', marginTop: 12, fontWeight: '600' }}>
+            Expires in 4 hours
           </Text>
         </View>
+      ))}
 
-        <View className="rounded-[28px] bg-white p-5 shadow-sm shadow-slate-200">
-          <Text className="text-base font-semibold text-slate-900">Merchant tools</Text>
-          <Text className="text-sm text-slate-600 mt-3 leading-6">
-            Access promo creation, redemption scanning, and campaign analytics from one place.
-          </Text>
-        </View>
+      {/* Categories / More Sections */}
+      <Text style={[homeStyles.sectionTitle, { marginTop: 20 }]}>Explore Categories</Text>
+      
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 12, marginBottom: 40 }}>
+        {['Food', 'Fashion', 'Groceries', 'Health', 'Electronics'].map((cat) => (
+          <TouchableOpacity key={cat} style={{
+            backgroundColor: '#FFFFFF',
+            paddingHorizontal: 20,
+            paddingVertical: 14,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: '#E2E8F0'
+          }}>
+            <Text style={{ color: '#0F172A', fontWeight: '500' }}>{cat}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
     </ScrollView>
   );
