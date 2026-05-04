@@ -135,6 +135,15 @@ class ApiService {
     return response;
   }
 
+  async verifyEmail(email: string, code: string): Promise<any> {
+    return await this.request<any>(
+      '/auth/verify-email',
+      'POST',
+      { email, code },
+      false
+    );
+  }
+
   // Location endpoints
   async getStates(): Promise<State[]> {
     return await this.request<State[]>(

@@ -127,12 +127,22 @@ export default function SignupScreen() {
       const response = await register(payload);
 
       if (response?.user) {
+        // Customer registration - immediate success
         Alert.alert("Success", "Account created successfully!", [
           { text: "Continue", onPress: () => router.replace('/home') }
         ]);
       } else if (response?.message) {
-        Alert.alert("Success", response.message, [
-          { text: "Continue", onPress: () => router.push('/login') }
+        // Merchant registration - requires email verification
+        Alert.alert("Check Your Email", response.message, [
+          {
+            text: "Continue",
+            onPress: () => {
+              router.push({
+                pathname: '/verify-email',
+                params: { email },
+              });
+            },
+          },
         ]);
       } else {
         Alert.alert("Success", "Account created successfully.");

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ScrollView, 
   View, 
@@ -8,7 +8,7 @@ import {
   KeyboardAvoidingView, 
   Platform 
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import Logo from '../components/Logo';
 import { loginStyles } from '../styles/login.styles';
@@ -17,10 +17,17 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const { email: paramEmail } = useLocalSearchParams<{ email: string }>();
+  const [email, setEmail] = useState(paramEmail || '');
   const [password, setPassword] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (paramEmail) {
+      setEmail(paramEmail);
+    }
+  }, [paramEmail]);
 
   const handleLogin = () => {
     setSubmitted(true);
