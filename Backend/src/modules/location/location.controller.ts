@@ -28,16 +28,12 @@ export class LocationController {
     return this.locationService.findMerchantsInRadius(latitude, longitude, radiusKm, maxResults);
   }
 
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @Get('states')
   @ApiOkResponse({ description: 'List of all available states' })
   async getStates() {
     return this.locationService.getStates();
   }
 
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @Get('lga')
   @ApiQuery({ name: 'state', required: false, type: String, description: 'Optional state filter' })
   @ApiOkResponse({ description: 'List of LGAs, optionally filtered by state' })
