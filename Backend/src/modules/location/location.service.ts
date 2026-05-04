@@ -93,12 +93,18 @@ export class LocationService {
     }
 
     const lgas = await query
-      .select('lga.id', 'id')
+      .select('MIN(lga.id)', 'id')
       .addSelect('lga.lga', 'lga')
       .addSelect('lga.state', 'state')
+      .groupBy('lga.lga')
+      .addGroupBy('lga.state')
       .orderBy('lga.lga', 'ASC')
       .getRawMany();
 
-    return lgas;
+    return lgas.map(item => ({
+      id: parseInt(item.id),
+      lga: item.lga,
+      state: item.state,
+    }));
   }
 }
