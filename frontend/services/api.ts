@@ -2,13 +2,6 @@ import * as SecureStore from 'expo-secure-store';
 
 const API_BASE_URL = 'http://localhost:3000';
 
-export interface ApiResponse<T> {
-  data?: T;
-  status: string;
-  statusCode: number;
-  message?: string;
-}
-
 export interface RegisterPayload {
   email: string;
   password: string;
@@ -16,7 +9,7 @@ export interface RegisterPayload {
   role: 'MERCHANT' | 'CUSTOMER';
   businessName?: string;
   category?: string;
-  businessLGA: string;
+  businessLGA?: string;
 }
 
 export interface LoginPayload {
@@ -36,12 +29,14 @@ export interface LGA {
 }
 
 export interface AuthResponse {
-  access_token: string;
-  user: {
+  accessToken?: string;
+  access_token?: string;
+  user?: {
     id: string;
     email: string;
     role: string;
   };
+  message?: string;
 }
 
 class ApiService {
@@ -82,7 +77,7 @@ class ApiService {
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
     body?: any,
     isAuth: boolean = false
-  ): Promise<ApiResponse<T>> {
+  ): Promise<T> {
     try {
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
@@ -104,7 +99,7 @@ class ApiService {
         throw new Error(data.message || `API Error: ${response.status}`);
       }
 
-      return data;
+      return data as T;
     } catch (error) {
       console.log('API Error:', error);
       throw error;
@@ -118,12 +113,12 @@ class ApiService {
       'POST',
       payload
     );
-    
-    if (response.data?.access_token) {
-      await this.saveToken(response.data.access_token);
+    const token = response.accessToken || response.access_token;
+    if (token) {
+      await this.saveToken(token);
+      this.token = token;
     }
-    
-    return response.data!;
+    return response;
   }
 
   async login(payload: LoginPayload): Promise<AuthResponse> {
@@ -132,37 +127,34 @@ class ApiService {
       'POST',
       payload
     );
-    
-    if (response.data?.access_token) {
-      await this.saveToken(response.data.access_token);
+    const token = response.accessToken || response.access_token;
+    if (token) {
+      await this.saveToken(token);
+      this.token = token;
     }
-    
-    return response.data!;
+    return response;
   }
 
   // Location endpoints
   async getStates(): Promise<State[]> {
-    const response = await this.request<State[]>(
+    return await this.request<State[]>(
       '/location/states',
       'GET',
       undefined,
-      true
+      false
     );
-    return response.data || [];
   }
 
   async getLGAs(state?: string): Promise<LGA[]> {
     const endpoint = state 
       ? `/location/lga?state=${encodeURIComponent(state)}`
       : '/location/lga';
-    
-    const response = await this.request<LGA[]>(
+    return await this.request<LGA[]>(
       endpoint,
       'GET',
       undefined,
-      true
+      false
     );
-    return response.data || [];
   }
 }
 

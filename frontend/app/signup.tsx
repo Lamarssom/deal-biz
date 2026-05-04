@@ -124,11 +124,19 @@ export default function SignupScreen() {
         }),
       };
 
-      await register(payload);
+      const response = await register(payload);
 
-      Alert.alert("Success", "Account created successfully!", [
-        { text: "Continue", onPress: () => router.replace('/home') }
-      ]);
+      if (response?.user) {
+        Alert.alert("Success", "Account created successfully!", [
+          { text: "Continue", onPress: () => router.replace('/home') }
+        ]);
+      } else if (response?.message) {
+        Alert.alert("Success", response.message, [
+          { text: "Continue", onPress: () => router.push('/login') }
+        ]);
+      } else {
+        Alert.alert("Success", "Account created successfully.");
+      }
     } catch (error: any) {
       const errorMessage = error?.message || 'Registration failed. Please try again.';
       Alert.alert("Error", errorMessage);

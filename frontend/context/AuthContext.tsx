@@ -12,7 +12,7 @@ interface AuthContextType {
   isLoading: boolean;
   isSignedIn: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: any) => Promise<void>;
+  register: (data: any) => Promise<any>;
   logout: () => Promise<void>;
 }
 
@@ -54,8 +54,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       const response = await apiService.register(data);
-      setUser(response.user);
-      setIsSignedIn(true);
+      if (response.user) {
+        setUser(response.user);
+        setIsSignedIn(true);
+      }
+      return response;
     } finally {
       setIsLoading(false);
     }
