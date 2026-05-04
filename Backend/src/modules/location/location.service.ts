@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Merchant } from '../../entities/merchant.entity';
+import { LGA } from '../../entities/lga.entity';
 import { calculateHaversineDistance } from '../../common/utils/haversine';
 import { getBoundingBox } from '../../common/utils/bounding-box';
 
@@ -10,6 +11,8 @@ export class LocationService {
   constructor(
     @InjectRepository(Merchant)
     private merchantRepo: Repository<Merchant>,
+    @InjectRepository(LGA)
+    private lgaRepo: Repository<LGA>,
   ) {}
 
   async findMerchantsInRadius(
@@ -67,5 +70,35 @@ export class LocationService {
     lon2: number,
   ): number {
     return calculateHaversineDistance.js(lat1, lon1, lat2, lon2);
+  }
+
+  async getStates(): Promise<{ id: number; state: string }[]> {
+    const states = await this.lgaRepo
+      .createQueryBuilder('lga')
+      .select('DISTINCT lga.state', 'state')
+      .orderBy('lga.state', 'ASC')
+      .getRawMany();
+
+    return states.map((item, index) => ({
+      id: index + 1,
+      state: item.state,
+    }));
+  }
+
+  async getLGAs(state?: string): Promise<{ id: number; lga: string; state: string }[]> {
+    let query = this.lgaRepo.createQueryBuilder('lga');
+
+    if (state) {
+      query = query.where('lga.state = :state', { state });
+    }
+
+    const lgas = await query
+      .select('lga.id', 'id')
+      .addSelect('lga.lga', 'lga')
+      .addSelect('lga.state', 'state')
+      .orderBy('lga.lga', 'ASC')
+      .getRawMany();
+
+    return lgas;
   }
 }

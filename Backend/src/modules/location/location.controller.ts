@@ -1,5 +1,5 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiQuery, ApiOkResponse } from '@nestjs/swagger';
 import { LocationService } from './location.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 
@@ -26,5 +26,22 @@ export class LocationController {
     const maxResults = parseInt(limit);
 
     return this.locationService.findMerchantsInRadius(latitude, longitude, radiusKm, maxResults);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Get('states')
+  @ApiOkResponse({ description: 'List of all available states' })
+  async getStates() {
+    return this.locationService.getStates();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Get('lga')
+  @ApiQuery({ name: 'state', required: false, type: String, description: 'Optional state filter' })
+  @ApiOkResponse({ description: 'List of LGAs, optionally filtered by state' })
+  async getLGAs(@Query('state') state?: string) {
+    return this.locationService.getLGAs(state);
   }
 }
