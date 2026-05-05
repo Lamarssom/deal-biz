@@ -1,6 +1,9 @@
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = __DEV__ 
+  ? 'http://192.168.0.168:3000'  // Use IP address for mobile simulators
+  : 'http://localhost:3000';     // Use localhost for web development
 
 export interface RegisterPayload {
   email: string;
@@ -39,14 +42,44 @@ export interface AuthResponse {
   message?: string;
 }
 
+export interface CreatePromotionPayload {
+  type: string;
+  title: string;
+  price: number;
+  originalPrice: number;
+  expiry: string;
+  quantityLimit: number;
+  description?: string;
+  photoUrl?: string;
+  radiusKm?: number;
+}
+
+export interface PromotionPaymentResponse {
+  message: string;
+  promotionId: string;
+  paystackReference: string;
+  authorizationUrl: string;
+  fee: number;
+  type: string;
+}
+
+export interface SettleBalancePayload {
+  amount: number;
+}
+
 class ApiService {
   private token: string | null = null;
+  private user: any = null;
 
   async init() {
     try {
       this.token = await SecureStore.getItemAsync('auth_token');
+      const userData = await AsyncStorage.getItem('user_data');
+      if (userData) {
+        this.user = JSON.parse(userData);
+      }
     } catch (error) {
-      console.log('Error loading token:', error);
+      console.log('Error loading token/user:', error);
     }
   }
 
@@ -63,10 +96,25 @@ class ApiService {
     }
   }
 
+  async saveUser(user: any) {
+    try {
+      await AsyncStorage.setItem('user_data', JSON.stringify(user));
+      this.user = user;
+    } catch (error) {
+      console.log('Error saving user:', error);
+    }
+  }
+
+  getUser() {
+    return this.user;
+  }
+
   async removeToken() {
     try {
       await SecureStore.deleteItemAsync('auth_token');
+      await AsyncStorage.removeItem('user_data');
       this.token = null;
+      this.user = null;
     } catch (error) {
       console.log('Error removing token:', error);
     }
@@ -118,6 +166,9 @@ class ApiService {
       await this.saveToken(token);
       this.token = token;
     }
+    if (response.user) {
+      await this.saveUser(response.user);
+    }
     return response;
   }
 
@@ -131,6 +182,9 @@ class ApiService {
     if (token) {
       await this.saveToken(token);
       this.token = token;
+    }
+    if (response.user) {
+      await this.saveUser(response.user);
     }
     return response;
   }
@@ -163,6 +217,63 @@ class ApiService {
       'GET',
       undefined,
       false
+    );
+  }
+
+  // Promotions endpoints
+  async createPromotion(data: {
+    type: string;
+    title: string;
+    price: number;
+    originalPrice: number;
+    expiry: string;
+    quantityLimit: number;
+  }): Promise<any> {
+    return await this.request<any>(
+      '/promotions',
+      'POST',
+      data,
+      true
+    );
+  }
+
+  // Merchant analytics endpoint
+  async getMerchantAnalytics(): Promise<any> {
+    return await this.request<any>(
+      '/analytics/merchant',
+      'GET',
+      undefined,
+      true  // requires auth
+    );
+  }
+
+    // PROMOTION WITH PAYMENT
+  async createPromotionWithPayment(data: CreatePromotionPayload): Promise<PromotionPaymentResponse> {
+    return await this.request<PromotionPaymentResponse>(
+      '/promotions',
+      'POST',
+      data,
+      true
+    );
+  }
+
+  // SETTLE BALANCE
+  async settleMerchantBalance(payload: SettleBalancePayload): Promise<any> {
+    return await this.request<any>(
+      '/merchants/settle-balance',
+      'POST',
+      payload,
+      true
+    );
+  }
+
+  // Verify payment manually
+  async verifyPayment(reference: string): Promise<any> {
+    return await this.request<any>(
+      `/payments/verify/${reference}`,
+      'GET',
+      undefined,
+      true
     );
   }
 }

@@ -53,4 +53,21 @@ export class PromotionsController {
       parseFloat(radius),
     );
   }
+
+  @Get('nearby')
+  @SkipThrottle() // Optional: reduce rate limiting for public endpoint
+  @ApiQuery({ name: 'lat', required: true, type: Number })
+  @ApiQuery({ name: 'lng', required: true, type: Number })
+  @ApiQuery({ name: 'radius', required: false, type: Number, example: 10 })
+  async getNearbyPromotions(
+    @Query('lat') lat: string,
+    @Query('lng') lng: string,
+    @Query('radius') radius = '10',
+  ) {
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lng);
+    const radiusKm = parseFloat(radius);
+
+    return this.promotionsService.getNearbyPromotions(latitude, longitude, radiusKm);
+  }
 }

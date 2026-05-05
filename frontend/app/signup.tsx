@@ -133,17 +133,8 @@ export default function SignupScreen() {
         ]);
       } else if (response?.message) {
         // Merchant registration - requires email verification
-        Alert.alert("Check Your Email", response.message, [
-          {
-            text: "Continue",
-            onPress: () => {
-              router.push({
-                pathname: '/verify-email',
-                params: { email },
-              });
-            },
-          },
-        ]);
+        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        Alert.alert("Check Your Email", response.message);
       } else {
         Alert.alert("Success", "Account created successfully.");
       }

@@ -1,11 +1,27 @@
-import React from 'react';
-import { ScrollView, View, Text, TouchableOpacity, TextInput } from 'react-native';
+import React, { useEffect } from 'react';
+import { ScrollView, View, Text, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { homeStyles } from '../styles/home.styles';
+import { useAuth } from '../context/AuthContext';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { user, logout, isSignedIn, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && !isSignedIn) {
+      router.replace('/login');
+    }
+  }, [isSignedIn, isLoading, router]);
+
+  if (isLoading || !isSignedIn) {
+    return null;
+  }
+
+  const goToPromotions = () => {
+    router.push('/merchants/promotions'); 
+  };
 
   return (
     <ScrollView style={homeStyles.container} showsVerticalScrollIndicator={false}>
@@ -16,9 +32,20 @@ export default function HomeScreen() {
           <Text style={homeStyles.title}>Chief 👋</Text>
         </View>
 
-        <TouchableOpacity style={homeStyles.logoutButton} onPress={() => router.replace('/login')}>
-          <Text style={homeStyles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          {user?.role === 'MERCHANT' && (
+            <TouchableOpacity 
+              style={[homeStyles.logoutButton, { backgroundColor: '#1C8EDA' }]} 
+              onPress={goToPromotions}
+            >
+              <Text style={homeStyles.logoutText}>Run Promo</Text>
+            </TouchableOpacity>
+          )}
+          
+          <TouchableOpacity style={homeStyles.logoutButton} onPress={logout}>
+            <Text style={homeStyles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search Bar */}

@@ -14,6 +14,10 @@ export class RegisterDto {
   @IsEnum(['CUSTOMER', 'MERCHANT'])
   role: Role;
 
+  @IsOptional()
+  @IsString()
+  name?: string;
+
   // Merchant-only fields
   @IsOptional()
   @IsString()

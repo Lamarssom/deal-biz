@@ -6,12 +6,14 @@ import {
   TextInput, 
   TouchableOpacity, 
   KeyboardAvoidingView, 
-  Platform 
+  Platform, 
+  Alert
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import Logo from '../components/Logo';
 import { loginStyles } from '../styles/login.styles';
+import { useAuth } from '../context/AuthContext';
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -29,14 +31,22 @@ export default function LoginScreen() {
     }
   }, [paramEmail]);
 
-  const handleLogin = () => {
+  const { login } = useAuth();   // ← Add this
+
+  const handleLogin = async () => {
     setSubmitted(true);
+    
     if (!emailRegex.test(email) || password.length < 6) {
       return;
     }
-    router.replace('/welcome');
-  };
 
+    try {
+      await login(email, password);
+      router.replace('/welcome');
+    } catch (error: any) {
+      Alert.alert('Login Failed', error?.message || 'Invalid credentials');
+    }
+  };
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

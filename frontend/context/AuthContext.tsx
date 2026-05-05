@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import * as SecureStore from 'expo-secure-store';
 import { apiService } from '../services/api';
 
 interface User {
@@ -30,8 +31,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const bootstrapAsync = async () => {
     try {
       await apiService.init();
-      // Try to restore token and fetch user
-      // For now, we'll just mark as ready
+      const storedUser = apiService.getUser();
+      const token = await SecureStore.getItemAsync('auth_token');
+      
+      if (storedUser && token) {
+        setUser(storedUser);
+        setIsSignedIn(true);
+      }
+      
       setIsLoading(false);
     } catch (e) {
       console.log('Failed to restore token:', e);
