@@ -1,27 +1,96 @@
-import React, { useEffect } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, TextInput, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+  ScrollView, 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  TextInput, 
+  Alert,
+  ActivityIndicator 
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import * as Location from 'expo-location';
+
 import { homeStyles } from '../styles/home.styles';
 import { useAuth } from '../context/AuthContext';
+import { apiService } from '../services/api';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user, logout, isSignedIn, isLoading } = useAuth();
 
-  useEffect(() => {
-    if (!isLoading && !isSignedIn) {
-      router.replace('/login');
-    }
-  }, [isSignedIn, isLoading, router]);
+  const [promotions, setPromotions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [locationLoading, setLocationLoading] = useState(false);
 
-  if (isLoading || !isSignedIn) {
-    return null;
-  }
+  // ✅ Improved auth check
+  useEffect(() => {
+    if (isLoading) return; // Wait until auth is fully initialized
+
+    if (!isSignedIn) {
+      router.replace('/login');
+    } else {
+      getUserLocation();
+    }
+  }, [isLoading, isSignedIn]); // Only run when loading finishes
+
+  const getUserLocation = async () => {
+    setLocationLoading(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert("Permission Denied", "Using default Lagos location");
+        await loadPromotions(6.5244, 3.3792);
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      await loadPromotions(location.coords.latitude, location.coords.longitude);
+    } catch (error) {
+      console.log("Location error:", error);
+      await loadPromotions(6.5244, 3.3792);
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  const loadPromotions = async (lat: number, lng: number) => {
+    try {
+      console.log(`📍 Fetching promotions near: ${lat}, ${lng}`);
+      const data = await apiService.getNearbyPromotions(lat, lng, 30);
+      console.log(`✅ Received ${data.length} promotions`);
+      setPromotions(data);
+    } catch (error) {
+      console.error('Failed to load promotions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const goToPromotions = () => {
-    router.push('/merchants/promotions'); 
+    router.push('/merchants/promotions');
   };
+
+  const handlePromotionPress = (promotionId: string) => {
+    router.push({
+      pathname: '/promotions/[id]',
+      params: { id: promotionId },
+    });
+  };
+
+  // Show loading state while auth is initializing
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#1C8EDA" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={homeStyles.container} showsVerticalScrollIndicator={false}>
@@ -58,38 +127,53 @@ export default function HomeScreen() {
         />
       </View>
 
-      {/* Featured / Hero Deal */}
-      <View style={homeStyles.dealCard}>
-        <Text style={{ color: 'white', fontSize: 15, fontWeight: '600', marginBottom: 8 }}>
-          TODAY'S BEST DEAL
-        </Text>
-        <Text style={{ color: 'white', fontSize: 24, fontWeight: '700', marginBottom: 12 }}>
-          ₦2,000 OFF
-        </Text>
-        <Text style={{ color: '#E0F2FE', fontSize: 16 }}>
-          on orders above ₦8,000 from selected merchants
-        </Text>
-        <TouchableOpacity style={{ marginTop: 20, backgroundColor: 'white', alignSelf: 'flex-start', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999 }}>
-          <Text style={{ color: '#1C8EDA', fontWeight: '600' }}>Claim Deal</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Featured Deal - keep as is */}
 
       {/* Nearby Promotions */}
-      <Text style={homeStyles.sectionTitle}>Nearby Promotions</Text>
-      
-      {[1, 2, 3].map((item) => (
-        <View key={item} style={homeStyles.card}>
-          <Text style={{ fontSize: 18, fontWeight: '600', color: '#0F172A' }}>
-            25% Off Chicken & Chips
-          </Text>
-          <Text style={{ color: '#64748B', marginTop: 4 }}>Mama's Kitchen • 1.2km away</Text>
-          <Text style={{ color: '#1C8EDA', marginTop: 12, fontWeight: '600' }}>
-            Expires in 4 hours
-          </Text>
-        </View>
-      ))}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 20 }}>
+        <Text style={homeStyles.sectionTitle}>Nearby Promotions</Text>
+        {locationLoading && <ActivityIndicator color="#1C8EDA" />}
+      </View>
 
-      {/* Categories / More Sections */}
+      {loading ? (
+        <Text style={{ padding: 20, textAlign: 'center' }}>Finding best deals near you...</Text>
+      ) : promotions.length === 0 ? (
+        <Text style={{ padding: 20, textAlign: 'center', color: '#64748B' }}>
+          No active promotions nearby right now
+        </Text>
+      ) : (
+        promotions.map((promo: any) => (
+          <TouchableOpacity 
+            key={promo.id} 
+            style={homeStyles.card}
+            onPress={() => handlePromotionPress(promo.id)}
+            activeOpacity={0.8}
+          >
+            <Text style={{ fontSize: 18, fontWeight: '600', color: '#0F172A' }}>
+              {promo.title}
+            </Text>
+            
+            <Text style={{ color: '#64748B', marginTop: 4 }}>
+              {promo.merchant?.businessName} • {promo.distanceKm}km away
+            </Text>
+
+            <View style={{ flexDirection: 'row', marginTop: 8, gap: 8 }}>
+              <Text style={{ color: '#1C8EDA', fontWeight: '700', fontSize: 18 }}>
+                ₦{promo.price}
+              </Text>
+              <Text style={{ textDecorationLine: 'line-through', color: '#94A3B8' }}>
+                ₦{promo.originalPrice}
+              </Text>
+            </View>
+
+            <Text style={{ color: '#10B981', marginTop: 8, fontWeight: '600' }}>
+              Expires: {new Date(promo.expiry).toLocaleDateString('en-NG')}
+            </Text>
+          </TouchableOpacity>
+        ))
+      )}
+
+      {/* Categories Section */}
       <Text style={[homeStyles.sectionTitle, { marginTop: 20 }]}>Explore Categories</Text>
       
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 12, marginBottom: 40 }}>

@@ -31,7 +31,7 @@ export default function LoginScreen() {
     }
   }, [paramEmail]);
 
-  const { login } = useAuth();   // ← Add this
+  const { login } = useAuth();  
 
   const handleLogin = async () => {
     setSubmitted(true);

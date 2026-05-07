@@ -19,6 +19,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class RedemptionsService {
+  merchantRepo: any;
   constructor(
     @InjectRepository(Redemption)
     private redemptionRepo: Repository<Redemption>,
@@ -29,55 +30,58 @@ export class RedemptionsService {
     private eventEmitter: EventEmitter2,
   ) {}
 
-  async generateQR(customerId: string, dto: GenerateQrDto) {
+  async generateQR(userId: string, dto: GenerateQrDto) {
     const promotion = await this.promotionRepo.findOne({
       where: { id: dto.promotionId, isActive: true },
+      relations: ['merchant']
     });
-    if (!promotion)
-      throw new NotFoundException('Promotion not found or inactive');
 
-    //expiry check
+    if (!promotion) throw new NotFoundException('Promotion not found or inactive');
+
     if (promotion.expiry < new Date()) {
-      throw new BadRequestException('Promotion expired');
+      throw new BadRequestException('Promotion has expired');
     }
 
-    const customer = await this.userRepo.findOne({ where: { id: customerId } });
-    if (!customer) throw new NotFoundException('Customer not found');
+    // Prevent generating QR for own promotion
+    if (promotion.merchantId === userId) {
+      throw new BadRequestException('You cannot generate QR code for your own promotion');
+    }
 
-    //prevent duplicate QR
+    // Check if user exists (works for both User and Merchant)
+    const userExists = await this.userRepo.findOne({ where: { id: userId } }) ||
+                      await this.merchantRepo.findOne({ where: { id: userId } });
+
+    if (!userExists) throw new NotFoundException('User not found');
+
+    // Prevent duplicate QR
     const existing = await this.redemptionRepo.findOne({
-      where: {
-        promotionId: dto.promotionId,
-        customerId,
-      },
+      where: { promotionId: dto.promotionId, customerId: userId },
     });
 
     if (existing) {
-      throw new BadRequestException('QR already generated for this promotion');
+      throw new BadRequestException('You have already generated a QR for this promotion');
     }
 
-    // Create unique redemption record (QR token)
-    const qrCode = crypto.randomBytes(16).toString('hex'); // 32 chars, very low collision chance
+    const qrCode = crypto.randomBytes(16).toString('hex');
 
     const redemption = this.redemptionRepo.create({
       promotion,
       promotionId: dto.promotionId,
-      customer,
-      customerId,
+      customer: userExists,        // This works because both User and Merchant extend base entity
+      customerId: userId,
       qrCode,
       isRedeemed: false,
     });
 
     const saved = await this.redemptionRepo.save(redemption);
 
-    // Generate QR image as base64
     const qrDataUrl = await QRCode.toDataURL(qrCode, { width: 300 });
 
     return {
       redemptionId: saved.id,
-      qrCode, // for debug
-      qrImage: qrDataUrl, // send this to frontend (img src)
-      message: 'Show this QR to merchant',
+      qrImage: qrDataUrl,
+      message: 'Show this QR code to the merchant to redeem',
+      promotionTitle: promotion.title,
     };
   }
 

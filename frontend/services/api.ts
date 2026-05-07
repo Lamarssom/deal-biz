@@ -67,6 +67,32 @@ export interface SettleBalancePayload {
   amount: number;
 }
 
+export interface NearbyPromotion {
+  id: string;
+  title: string;
+  type: string;
+  price: number;
+  originalPrice: number;
+  expiry: string;
+  quantityLimit: number;
+  redeemedCount: number;
+  views: number;
+  distanceKm: number;
+  merchant: {
+    id: string;
+    businessName: string;
+    category: string;
+    businessLGA: string;
+  };
+}
+
+export interface GenerateQRResponse {
+  redemptionId: string;
+  qrCode: string;
+  qrImage: string;
+  message: string;
+}
+
 class ApiService {
   private token: string | null = null;
   private user: any = null;
@@ -273,6 +299,24 @@ class ApiService {
       `/payments/verify/${reference}`,
       'GET',
       undefined,
+      true
+    );
+  }
+
+  async getNearbyPromotions(lat: number, lng: number, radius: number = 10): Promise<NearbyPromotion[]> {
+    return await this.request<NearbyPromotion[]>(
+      `/promotions/nearby?lat=${lat}&lng=${lng}&radius=${radius}`,
+      'GET',
+      undefined,
+      true 
+    );
+  }
+
+  async generateQR(payload: { promotionId: string }): Promise<GenerateQRResponse> {
+    return await this.request<GenerateQRResponse>(
+      '/redemptions/generate',
+      'POST',
+      payload,
       true
     );
   }

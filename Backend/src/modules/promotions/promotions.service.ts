@@ -18,6 +18,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { OnEvent } from '@nestjs/event-emitter';
 import { EVENTS } from '../events/event.types';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { calculateHaversineDistance } from '../../common/utils/haversine';
 
 @Injectable()
 export class PromotionsService {
@@ -203,79 +204,134 @@ export class PromotionsService {
   async getNearbyPromotions(
     userLat: number,
     userLng: number,
-    radiusKm: number = 5,
+    radiusKm: number = 15,   // Increased default
     limit: number = 20,
-  ) {
-    // 1. Get verified merchants in radius (SQL query from Phase 3)
-    const merchants = await this.locationService.findMerchantsInRadius(
-      userLat,
-      userLng,
-      radiusKm,
-      100,
-    ); // get more to rank
+  ): Promise<any[]> {
+    try {
+      console.log(`Searching promotions near: ${userLat}, ${userLng} (radius: ${radiusKm}km)`);
 
-    if (merchants.length === 0) return [];
+      // 1. Get merchants in radius
+      const merchants = await this.locationService.findMerchantsInRadius(
+        userLat,
+        userLng,
+        radiusKm,
+        100,
+      );
 
-    const merchantIds: string[] = merchants.map((m) => m.id);
+      console.log(`Found ${merchants.length} merchants in radius`);
 
-    // 2. Get active promotions for these merchants
-    const promotions = await this.promotionRepo.find({
-      where: {
-        merchantId: In(merchantIds),
-        isActive: true,
-        expiry: MoreThan(new Date()),
+      if (merchants.length === 0) {
+        console.log('No merchants in radius. Trying wider search (30km)...');
+        // Fallback: wider search
+        const widerMerchants = await this.locationService.findMerchantsInRadius(
+          userLat, userLng, 30, 50
+        );
+
+        if (widerMerchants.length === 0) {
+          // Ultimate fallback: return all active promotions
+          console.log('No merchants found even in wide radius. Returning all active promotions.');
+          const allActive = await this.promotionRepo.find({
+            where: { isActive: true, expiry: MoreThan(new Date()) },
+            relations: ['merchant'],
+            take: limit,
+          });
+
+          return allActive.map(p => this.formatPromotion(p, userLat, userLng));
+        }
+
+        // Use wider results
+        const merchantIds = widerMerchants.map(m => m.id);
+        const promotions = await this.promotionRepo.find({
+          where: { merchantId: In(merchantIds), isActive: true, expiry: MoreThan(new Date()) },
+          relations: ['merchant'],
+          take: 100,
+        });
+
+        return this.formatAndRankPromotions(promotions, userLat, userLng, limit);
+      }
+
+      // Normal flow
+      const merchantIds = merchants.map(m => m.id);
+      const promotions = await this.promotionRepo.find({
+        where: {
+          merchantId: In(merchantIds),
+          isActive: true,
+          expiry: MoreThan(new Date()),
+        },
+        relations: ['merchant'],
+        take: 100,
+      });
+
+      return this.formatAndRankPromotions(promotions, userLat, userLng, limit);
+
+    } catch (error) {
+      console.error('Error in getNearbyPromotions:', error);
+      return [];
+    }
+  }
+
+  // Helper method
+  private formatPromotion(promo: Promotion, userLat: number, userLng: number) {
+    return {
+      id: promo.id,
+      title: promo.title,
+      type: promo.type,
+      price: Number(promo.price),
+      originalPrice: Number(promo.originalPrice),
+      expiry: promo.expiry,
+      quantityLimit: promo.quantityLimit,
+      redeemedCount: promo.redeemedCount || 0,
+      views: promo.views || 0,
+      merchant: {
+        id: promo.merchant.id,
+        businessName: promo.merchant.businessName,
+        category: promo.merchant.category,
+        businessLGA: promo.merchant.businessLGA,
       },
-      relations: ['merchant'],
-      take: 100,
-    });
+      distanceKm: Number(
+        this.locationService.calculateDistance(
+          userLat, userLng,
+          Number(promo.merchant.latitude),
+          Number(promo.merchant.longitude)
+        ).toFixed(1)
+      ),
+    };
+  }
 
-    // 3. Rank them (distance + popularity + urgency)
-    return this.promotionsRankingService
-      .rankPromotions(userLat, userLng, promotions)
-      .slice(0, limit)
-      .map((promo) => ({
-        id: promo.id,
-        title: promo.title,
-        description: promo.description,
-        type: promo.type,
+  private formatAndRankPromotions(promotions: Promotion[], userLat: number, userLng: number, limit: number) {
+    if (promotions.length === 0) return [];
 
-        price: Number(promo.price),
-        originalPrice: promo.originalPrice,
-
-        radiusKm: Number(promo.radiusKm),
-        expiry: promo.expiry,
-
-        merchant: {
-          id: promo.merchant.id,
-          businessName: promo.merchant.businessName,
-          category: promo.merchant.category,
-          businessLGA: promo.merchant.businessLGA,
-          latitude: Number(promo.merchant.latitude),
-          longitude: Number(promo.merchant.longitude),
-        },
-
-        stats: {
-          views: promo.views,
-          redeemedCount: promo.redeemedCount,
-        },
-      }));
+    const ranked = this.promotionsRankingService.rankPromotions(userLat, userLng, promotions);
+    
+    return ranked.slice(0, limit).map(p => this.formatPromotion(p, userLat, userLng));
   }
 
   async activatePromotion(promotionId: string) {
-    const promo = await this.promotionRepo.findOne({
-      where: { id: promotionId },
-    });
-    if (!promo) {
-      console.error(`Promotion ${promotionId} not found`);
-      return;
-    }
-    if (promo.isActive) {
-      console.log(`Promotion ${promotionId} already active`);
-      return;
-    }
+    try {
+      const promo = await this.promotionRepo.findOne({
+        where: { id: promotionId },
+        relations: ['merchant']
+      });
 
-    await this.promotionRepo.update(promotionId, { isActive: true });
-    console.log(`✅ Promotion ${promotionId} is now LIVE!`);
+      if (!promo) {
+        console.error(`Promotion ${promotionId} not found`);
+        return;
+      }
+
+      if (promo.isActive) {
+        console.log(`Promotion ${promotionId} is already active`);
+        return;
+      }
+
+      await this.promotionRepo.update(promotionId, { 
+        isActive: true,
+        updatedAt: new Date()
+      });
+
+      console.log(`✅ Promotion ${promotionId} is now LIVE! Title: ${promo.title}`);
+    } catch (error) {
+      console.error('Failed to activate promotion:', error);
+    }
   }
 
   @OnEvent(EVENTS.PAYMENT_SUCCESS)

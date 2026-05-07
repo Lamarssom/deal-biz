@@ -38,10 +38,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(storedUser);
         setIsSignedIn(true);
       }
-      
-      setIsLoading(false);
     } catch (e) {
       console.log('Failed to restore token:', e);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -50,8 +49,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       const response = await apiService.login({ email, password });
-      setUser(response.user);
-      setIsSignedIn(true);
+      
+      // ✅ Fixed: Safely handle undefined user
+      if (response.user) {
+        setUser(response.user);
+        setIsSignedIn(true);
+      } else {
+        throw new Error('Login failed: No user data received');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -61,6 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       const response = await apiService.register(data);
+      
+      // ✅ Fixed: Safely handle undefined user
       if (response.user) {
         setUser(response.user);
         setIsSignedIn(true);
