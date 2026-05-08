@@ -4,7 +4,7 @@ import { StyleSheet } from 'react-native';
 export const welcomeStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E6ECF5',
   },
   centerContent: {
     flex: 1,

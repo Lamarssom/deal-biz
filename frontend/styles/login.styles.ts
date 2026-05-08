@@ -4,7 +4,7 @@ import { StyleSheet } from 'react-native';
 export const loginStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E6ECF5',
   },
   scrollContent: {
     flexGrow: 1,
@@ -29,7 +29,7 @@ export const loginStyles = StyleSheet.create({
     marginBottom: 40,
   },
   formCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E6ECF5',
     borderRadius: 28,
     padding: 32,
     shadowColor: '#000',
@@ -52,7 +52,7 @@ export const loginStyles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#E6ECF5',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 20,
@@ -96,7 +96,7 @@ export const loginStyles = StyleSheet.create({
   socialButton: {
     width: 56,
     height: 56,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E6ECF5',
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#E2E8F0',

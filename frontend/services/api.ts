@@ -1,5 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 const API_BASE_URL = __DEV__ 
   ? 'http://192.168.0.168:3000'  // Use IP address for mobile simulators
@@ -99,7 +100,13 @@ class ApiService {
 
   async init() {
     try {
-      this.token = await SecureStore.getItemAsync('auth_token');
+      if (Platform.OS !== 'web') {
+        this.token = await SecureStore.getItemAsync('auth_token');
+      } else {
+        console.log('⚠️ Web mode – skipping SecureStore');
+        this.token = null;
+      }
+
       const userData = await AsyncStorage.getItem('user_data');
       if (userData) {
         this.user = JSON.parse(userData);
@@ -317,6 +324,33 @@ class ApiService {
       '/redemptions/generate',
       'POST',
       payload,
+      true
+    );
+  }
+
+    async redeem(qrCode: string): Promise<any> {
+    return await this.request<any>(
+      '/redemptions/redeem',
+      'POST',
+      { qrCode },
+      true 
+    );
+  }
+
+  async getMyRedemptions(): Promise<any[]> {
+    return await this.request<any[]>(
+      '/redemptions/my',
+      'GET',
+      undefined,
+      true 
+    );
+  }
+
+  async getMyPromotions(): Promise<any[]> {
+    return await this.request<any[]>(
+      '/promotions/my',
+      'GET',
+      undefined,
       true
     );
   }

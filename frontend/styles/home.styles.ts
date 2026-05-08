@@ -1,18 +1,17 @@
-// styles/home.styles.ts
 import { StyleSheet } from 'react-native';
 
 export const homeStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#E6ECF5',   // darker, cleaner slate
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingHorizontal: 20,
+    paddingTop: 50,
+    paddingBottom: 16,
   },
   greeting: {
     fontSize: 14,
@@ -24,6 +23,12 @@ export const homeStyles = StyleSheet.create({
     color: '#0F172A',
     marginTop: 4,
   },
+  headerButtons: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
   logoutButton: {
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -31,14 +36,15 @@ export const homeStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
     backgroundColor: '#FFFFFF',
+    minWidth: 90,
   },
   logoutText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#475569',
+    textAlign: 'center',
   },
   searchContainer: {
-    marginHorizontal: 24,
+    marginHorizontal: 20,
     marginBottom: 24,
     backgroundColor: '#FFFFFF',
     borderRadius: 999,
@@ -61,14 +67,14 @@ export const homeStyles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#0F172A',
-    marginHorizontal: 24,
+    marginHorizontal: 20,
     marginBottom: 16,
   },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 20,
-    marginHorizontal: 24,
+    marginHorizontal: 20,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
@@ -80,7 +86,7 @@ export const homeStyles = StyleSheet.create({
     backgroundColor: '#1C8EDA',
     borderRadius: 24,
     padding: 20,
-    marginHorizontal: 24,
+    marginHorizontal: 20,
     marginBottom: 16,
   },
 });

@@ -1,11 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { apiService } from '../services/api';
 
 interface User {
   id: string;
   email: string;
   role: string;
+  name?: string; 
+  firstName?: string;
 }
 
 interface AuthContextType {
@@ -31,9 +34,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const bootstrapAsync = async () => {
     try {
       await apiService.init();
+
+      // ✅ Web-safe SecureStore (expo-secure-store doesn't work on web)
+      let token: string | null = null;
+      if (Platform.OS !== 'web') {
+        token = await SecureStore.getItemAsync('auth_token');
+      } else {
+        // Optional: fallback for web dev (you can remove this later)
+        console.log('⚠️ Running on web – skipping SecureStore');
+      }
+
       const storedUser = apiService.getUser();
-      const token = await SecureStore.getItemAsync('auth_token');
-      
+
       if (storedUser && token) {
         setUser(storedUser);
         setIsSignedIn(true);
@@ -49,8 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       const response = await apiService.login({ email, password });
-      
-      // ✅ Fixed: Safely handle undefined user
       if (response.user) {
         setUser(response.user);
         setIsSignedIn(true);
@@ -66,8 +76,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       const response = await apiService.register(data);
-      
-      // ✅ Fixed: Safely handle undefined user
       if (response.user) {
         setUser(response.user);
         setIsSignedIn(true);

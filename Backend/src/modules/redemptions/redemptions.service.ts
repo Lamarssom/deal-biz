@@ -162,4 +162,15 @@ export class RedemptionsService {
       successFeeCharged: result.successFee,
     };
   }
+
+  async getMyRedemptions(userId: string) {
+    return await this.redemptionRepo.find({
+      where: { customerId: userId },
+      relations: ['promotion', 'promotion.merchant'],
+      order: {
+        isRedeemed: 'ASC',
+        createdAt: 'DESC',
+      },
+    });
+  }
 }

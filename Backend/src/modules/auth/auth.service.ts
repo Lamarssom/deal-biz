@@ -95,7 +95,7 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    let entity: any = await this.usersService.findOne(dto.email );
+    let entity: any = await this.usersService.findOne(dto.email);
     if (!entity) entity = await this.merchantsService.findOne(dto.email);
 
     if (!entity || !(await bcrypt.compare(dto.password, entity.password))) {
@@ -107,12 +107,18 @@ export class AuthService {
     }
 
     const payload = { sub: entity.id, email: entity.email, role: entity.role };
+
     return {
       accessToken: this.jwtService.sign(payload, {
         secret: this.configService.get('JWT_SECRET'),
         expiresIn: this.configService.get('JWT_EXPIRES_IN'),
       }),
-      user: { id: entity.id, email: entity.email, role: entity.role },
+      user: {
+        id: entity.id,
+        email: entity.email,
+        role: entity.role,
+        name: entity.name || entity.businessName || undefined,
+      },
     };
   }
 

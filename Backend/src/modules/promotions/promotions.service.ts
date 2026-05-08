@@ -338,4 +338,12 @@ export class PromotionsService {
   async handlePaymentSuccess(payload: { promotionId: string }) {
     await this.activatePromotion(payload.promotionId);
   }
+
+  async getMyPromotions(merchantId: string) {
+    return await this.promotionRepo.find({
+      where: { merchantId },
+      relations: ['merchant'],
+      order: { createdAt: 'DESC' },
+    });
+  }
 }

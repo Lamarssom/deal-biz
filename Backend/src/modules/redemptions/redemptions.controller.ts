@@ -1,6 +1,6 @@
 // src/modules/redemptions/redemptions.controller.ts
 import express from 'express';
-import { Controller, Post, Body, Req, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Req, UseGuards, Get } from '@nestjs/common';
 import { RedemptionsService } from './redemptions.service';
 import { GenerateQrDto } from './dto/generate-qr.dto';
 import { RedeemDto } from './dto/redeem.dto';
@@ -24,5 +24,12 @@ export class RedemptionsController {
   redeem(@Req() req: express.Request, @Body() dto: RedeemDto) {
     const user = req.user as { id: string };
     return this.redemptionsService.redeem(dto.qrCode, user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('my')
+  getMyRedemptions(@Req() req: express.Request) {
+    const user = req.user as { id: string };
+    return this.redemptionsService.getMyRedemptions(user.id);
   }
 }

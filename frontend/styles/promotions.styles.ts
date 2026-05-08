@@ -4,7 +4,7 @@ import { StyleSheet } from 'react-native';
 export const promotionsStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#E6ECF5',
   },
   header: {
     paddingHorizontal: 24,
@@ -22,7 +22,7 @@ export const promotionsStyles = StyleSheet.create({
     marginTop: 4,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E6ECF5',
     borderRadius: 24,
     padding: 20,
     marginHorizontal: 24,
@@ -58,7 +58,7 @@ export const promotionsStyles = StyleSheet.create({
     fontWeight: '600',
   },
   secondaryButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E6ECF5',
     borderWidth: 1,
     borderColor: '#1C8EDA',
     paddingVertical: 16,
@@ -72,5 +72,35 @@ export const promotionsStyles = StyleSheet.create({
     marginHorizontal: 24,
     marginTop: 24,
     marginBottom: 12,
+  },
+    // === NEW TAB STYLES ===
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 999,
+    padding: 4,
+    marginHorizontal: 20,
+    marginBottom: 20,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 999,
+  },
+  tabActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  tabText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  tabTextActive: {
+    color: '#1C8EDA',
   },
 });

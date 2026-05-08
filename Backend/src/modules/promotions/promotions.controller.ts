@@ -32,9 +32,15 @@ export class PromotionsController {
     return this.promotionsService.createPromotion(merchantId, dto);
   }
 
-  // === Public for all authenticated users (Customer + Merchant) ===
+  @UseGuards(JwtAuthGuard)
+  @Get('my')
+  async getMyPromotions(@Req() req: any) {
+    const merchantId = req.user.id;
+    return this.promotionsService.getMyPromotions(merchantId);
+  }
+
   @Get('nearby')
-  @UseGuards(JwtAuthGuard)           // Only JWT, no RolesGuard
+  @UseGuards(JwtAuthGuard)
   @Throttle({ default: { ttl: 60, limit: 50 } })
   @ApiQuery({ name: 'lat', required: true })
   @ApiQuery({ name: 'lng', required: true })

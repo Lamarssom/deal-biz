@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 export const promotionStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#E6ECF5',
   },
   header: {
     paddingHorizontal: 24,
@@ -17,7 +17,7 @@ export const promotionStyles = StyleSheet.create({
     lineHeight: 32,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E6ECF5',
     borderRadius: 24,
     padding: 24,
     marginHorizontal: 24,

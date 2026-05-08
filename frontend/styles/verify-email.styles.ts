@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 export const verifyEmailStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E6ECF5',
   },
   scrollContent: {
     justifyContent: 'center',
@@ -81,7 +81,7 @@ export const verifyEmailStyles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonLabel: {
-    color: '#FFFFFF',
+    color: '#E6ECF5',
     fontSize: 16,
     fontWeight: '600',
   },

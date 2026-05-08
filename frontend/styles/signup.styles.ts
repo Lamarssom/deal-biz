@@ -4,7 +4,7 @@ import { StyleSheet } from 'react-native';
 export const signupStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#E6ECF5',
   },
   scrollContent: {
     flexGrow: 1,
@@ -31,7 +31,7 @@ export const signupStyles = StyleSheet.create({
     maxWidth: 300,
   },
   formCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E6ECF5',
     borderRadius: 32,
     padding: 24,
     shadowColor: '#000',
@@ -54,7 +54,7 @@ export const signupStyles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#E6ECF5',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 999,
@@ -94,7 +94,7 @@ export const signupStyles = StyleSheet.create({
   socialButton: {
     width: 52,
     height: 52,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E6ECF5',
     borderRadius: 999,
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -129,7 +129,7 @@ export const signupStyles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 2,
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E6ECF5',
   },
   roleCardSelected: {
     borderColor: '#1C8EDA',
