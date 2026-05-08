@@ -319,7 +319,7 @@ class ApiService {
     );
   }
 
-  async generateQR(payload: { promotionId: string }): Promise<GenerateQRResponse> {
+  async generateQR(payload: { promotionId: string; quantity: number }): Promise<GenerateQRResponse> {
     return await this.request<GenerateQRResponse>(
       '/redemptions/generate',
       'POST',
@@ -328,7 +328,7 @@ class ApiService {
     );
   }
 
-    async redeem(qrCode: string): Promise<any> {
+  async redeem(qrCode: string): Promise<any> {
     return await this.request<any>(
       '/redemptions/redeem',
       'POST',

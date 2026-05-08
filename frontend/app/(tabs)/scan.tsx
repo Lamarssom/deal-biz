@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,9 @@ export default function ScanScreen() {
   const [scanned, setScanned] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Use ref for instant blocking (faster than state)
+  const isProcessingRef = useRef(false);
+
   // Merchant-only guard
   useEffect(() => {
     if (!isSignedIn || user?.role !== 'MERCHANT') {
@@ -30,7 +33,9 @@ export default function ScanScreen() {
   }, [isSignedIn, user]);
 
   const handleBarCodeScanned = async (result: BarcodeScanningResult) => {
-    if (scanned || !result.data) return;
+    if (scanned || isProcessingRef.current || !result.data) return;
+
+    isProcessingRef.current = true;
     setScanned(true);
     setLoading(true);
 
@@ -39,7 +44,10 @@ export default function ScanScreen() {
       Alert.alert('✅ Redemption Successful!', response.message || 'Promotion redeemed.', [
         {
           text: 'Scan Another',
-          onPress: () => setScanned(false),
+          onPress: () => {
+            setScanned(false);
+            isProcessingRef.current = false;
+          },
         },
         {
           text: 'Back to Home',
@@ -49,7 +57,10 @@ export default function ScanScreen() {
     } catch (error: any) {
       console.error(error);
       Alert.alert('Redemption Failed', error.message || 'Invalid or already redeemed QR code.', [
-        { text: 'Try Again', onPress: () => setScanned(false) },
+        { text: 'Try Again', onPress: () => {
+          setScanned(false);
+          isProcessingRef.current = false;
+        }},
       ]);
     } finally {
       setLoading(false);

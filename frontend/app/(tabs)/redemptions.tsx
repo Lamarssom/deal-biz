@@ -47,21 +47,21 @@ export default function MyRedemptionsScreen() {
 
   if (authLoading || loading) {
     return (
-      <View style={redemptionStyles.container}>
+      <SafeAreaView style={redemptionStyles.container} edges={['top']}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#1C8EDA" />
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   const activeVouchers = redemptions.filter((r) => !r.isRedeemed);
-  const historyVouchers = redemptions.filter((r) => r.isRedeemed);
+  const redeemedVouchers = redemptions.filter((r) => r.isRedeemed);
 
   return (
     <SafeAreaView style={redemptionStyles.container} edges={['top']}>
       <ScrollView
-        style={redemptionStyles.container}
+        style={{ flex: 1 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={{ padding: 20 }}>
@@ -70,7 +70,7 @@ export default function MyRedemptionsScreen() {
             Show these QR codes to the merchant for redemption
           </Text>
 
-          {/* ACTIVE VOUCHERS */}
+          {/* Active Vouchers */}
           <Text style={redemptionStyles.sectionTitle}>Active Vouchers</Text>
           {activeVouchers.length === 0 ? (
             <Text style={{ color: '#64748B', textAlign: 'center', padding: 40 }}>
@@ -79,7 +79,8 @@ export default function MyRedemptionsScreen() {
           ) : (
             activeVouchers.map((redemption) => (
               <View key={redemption.id} style={redemptionStyles.card}>
-                <Text style={{ fontSize: 18, fontWeight: '600' }}>
+                {/* Promotion title - now clearly visible */}
+                <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 4 }}>
                   {redemption.promotion?.title}
                 </Text>
                 <Text style={{ color: '#64748B', marginBottom: 16 }}>
@@ -96,20 +97,27 @@ export default function MyRedemptionsScreen() {
                 <Text style={redemptionStyles.expiryText}>
                   Expires: {new Date(redemption.promotion?.expiry).toLocaleDateString('en-NG')}
                 </Text>
+
+                <Text style={{ marginTop: 12, color: '#10B981', fontSize: 13 }}>
+                  Quantity: {redemption.quantity || 1}
+                </Text>
               </View>
             ))
           )}
 
-          {/* HISTORY */}
-          {historyVouchers.length > 0 && (
+          {/* Redeemed Vouchers */}
+          {redeemedVouchers.length > 0 && (
             <>
               <Text style={redemptionStyles.sectionTitle}>Redeemed Vouchers</Text>
-              {historyVouchers.map((redemption) => (
-                <View key={redemption.id} style={redemptionStyles.historyCard}>
+              {redeemedVouchers.map((redemption) => (
+                <View key={redemption.id} style={[redemptionStyles.historyCard, { opacity: 0.85 }]}>
                   <Text style={{ fontSize: 16, fontWeight: '600' }}>
                     {redemption.promotion?.title}
                   </Text>
-                  <Text style={{ color: '#10B981' }}>✅ Redeemed</Text>
+                  <Text style={{ color: '#10B981', marginTop: 4 }}>✅ Already Redeemed</Text>
+                  <Text style={{ color: '#64748B', fontSize: 13, marginTop: 4 }}>
+                    Scanned on {new Date(redemption.redeemedAt).toLocaleDateString('en-NG')}
+                  </Text>
                 </View>
               ))}
             </>

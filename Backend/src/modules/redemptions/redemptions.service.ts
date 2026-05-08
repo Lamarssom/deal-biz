@@ -67,10 +67,11 @@ export class RedemptionsService {
     const redemption = this.redemptionRepo.create({
       promotion,
       promotionId: dto.promotionId,
-      customer: userExists,        // This works because both User and Merchant extend base entity
+      customer: userExists,
       customerId: userId,
       qrCode,
       isRedeemed: false,
+      quantity: dto.quantity,
     });
 
     const saved = await this.redemptionRepo.save(redemption);
@@ -82,6 +83,7 @@ export class RedemptionsService {
       qrImage: qrDataUrl,
       message: 'Show this QR code to the merchant to redeem',
       promotionTitle: promotion.title,
+      quantity: dto.quantity,
     };
   }
 
@@ -102,22 +104,21 @@ export class RedemptionsService {
 
       const promotion = redemption.promotion;
       const merchant = promotion.merchant;
+      const quantity = redemption.quantity || 1;
 
-      if (
-        promotion.quantityLimit > 0 &&
-        promotion.redeemedCount >= promotion.quantityLimit
-      ) {
+      if (promotion.quantityLimit > 0 && promotion.redeemedCount + quantity > promotion.quantityLimit) {
         throw new BadRequestException('Promotion quantity limit reached');
       }
 
-      const successFee = Math.round(promotion.price * 0.03 * 100) / 100;
+      const successFee = Math.round(promotion.price * 0.03 * quantity * 100) / 100;
 
+      // Atomic increment
       const updateResult = await manager
         .createQueryBuilder()
         .update(Promotion)
-        .set({ redeemedCount: () => '"redeemedCount" + 1' })
+        .set({ redeemedCount: () => `"redeemedCount" + ${quantity}` })
         .where('id = :id', { id: promotion.id })
-        .andWhere('(quantityLimit = 0 OR "redeemedCount" < "quantityLimit")')
+        .andWhere('(quantityLimit = 0 OR "redeemedCount" + :qty <= "quantityLimit")', { qty: quantity })
         .execute();
 
       if (updateResult.affected === 0) {
@@ -145,6 +146,7 @@ export class RedemptionsService {
         promotionTitle: promotion.title,
         businessName: merchant.businessName,
         successFee,
+        quantity
       };
     });
 
@@ -160,6 +162,7 @@ export class RedemptionsService {
       promotionTitle: result.promotionTitle,
       businessName: result.businessName,
       successFeeCharged: result.successFee,
+      quantity: result.quantity
     };
   }
 

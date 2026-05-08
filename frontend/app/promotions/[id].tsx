@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, View, Text, TouchableOpacity, Alert, ActivityIndicator, Image } from 'react-native';
+import { 
+  ScrollView, 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  Alert, 
+  ActivityIndicator, 
+  TextInput,
+  Modal 
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../services/api';
@@ -12,6 +21,10 @@ export default function PromotionDetail() {
 
   const [promotion, setPromotion] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Quantity selector states
+  const [showQuantityModal, setShowQuantityModal] = useState(false);
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
 
   useEffect(() => {
     if (id) loadPromotionDetails(id);
@@ -30,10 +43,31 @@ export default function PromotionDetail() {
   };
 
   const handleGenerateQR = () => {
-    router.push({
-      pathname: '/redemption/generate',
-      params: { promotionId: id }
-    });
+    setShowQuantityModal(true);
+  };
+
+  const confirmGenerateQR = async () => {
+    if (!promotion) return;
+    
+    setShowQuantityModal(false);
+    
+    try {
+      const response = await apiService.generateQR({
+        promotionId: promotion.id,
+        quantity: selectedQuantity
+      });
+
+      Alert.alert(
+        "QR Code Generated", 
+        `Quantity: ${selectedQuantity} × ${promotion.title}`,
+        [
+          { text: "View My Vouchers", onPress: () => router.push('/redemptions') },
+          { text: "OK", style: "cancel" }
+        ]
+      );
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to generate QR code");
+    }
   };
 
   if (loading) {
@@ -90,6 +124,79 @@ export default function PromotionDetail() {
       >
         <Text style={{ color: '#1C8EDA', fontWeight: '600' }}>← Back to Home</Text>
       </TouchableOpacity>
+
+      {/* Quantity Selection Modal */}
+      <Modal
+        visible={showQuantityModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowQuantityModal(false)}
+      >
+        <View style={{
+          flex: 1,
+          justifyContent: 'flex-end',
+          backgroundColor: 'rgba(0,0,0,0.6)'
+        }}>
+          <View style={{
+            backgroundColor: '#FFFFFF',
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            padding: 24,
+            paddingBottom: 40
+          }}>
+            <Text style={{ fontSize: 22, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
+              How many would you like?
+            </Text>
+            <Text style={{ textAlign: 'center', color: '#64748B', marginBottom: 24 }}>
+              {promotion.title} — ₦{promotion.price} each
+            </Text>
+
+            {/* Quick buttons */}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginBottom: 24 }}>
+              {[1, 2, 3, 5, 10].map(q => (
+                <TouchableOpacity
+                  key={q}
+                  onPress={() => setSelectedQuantity(q)}
+                  style={{
+                    paddingHorizontal: 24,
+                    paddingVertical: 12,
+                    borderRadius: 999,
+                    borderWidth: 2,
+                    borderColor: selectedQuantity === q ? '#1C8EDA' : '#E2E8F0',
+                    backgroundColor: selectedQuantity === q ? '#F0F9FF' : '#FFFFFF'
+                  }}
+                >
+                  <Text style={{ fontWeight: '600', color: selectedQuantity === q ? '#1C8EDA' : '#475569' }}>
+                    {q}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity 
+              onPress={confirmGenerateQR}
+              style={{
+                backgroundColor: '#1C8EDA',
+                paddingVertical: 18,
+                borderRadius: 999,
+                alignItems: 'center',
+                marginBottom: 12
+              }}
+            >
+              <Text style={{ color: 'white', fontSize: 18, fontWeight: '600' }}>
+                Generate QR for {selectedQuantity} item{selectedQuantity > 1 ? 's' : ''}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              onPress={() => setShowQuantityModal(false)}
+              style={{ paddingVertical: 12 }}
+            >
+              <Text style={{ textAlign: 'center', color: '#64748B', fontWeight: '600' }}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }

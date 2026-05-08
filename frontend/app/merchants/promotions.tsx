@@ -234,53 +234,58 @@ export default function MerchantPromotionsScreen() {
 
       {activeTab === 'create' && (
         <View style={promotionsStyles.card}>
-          <Text style={{ fontSize: 20, fontWeight: '700', marginBottom: 16 }}>Create New Promotion</Text>
+          <Text style={{ fontSize: 20, fontWeight: '700', marginBottom: 20 }}>Create New Promotion</Text>
 
-          <Text style={{ fontWeight: '600', marginBottom: 8 }}>Promotion Type</Text>
+          <Text style={promotionsStyles.label}>Promotion Type</Text>
           <View style={[promotionsStyles.input, { justifyContent: 'center' }]}>
             <Text style={{ fontSize: 16, color: '#1C8EDA', fontWeight: '600' }}>STANDARD</Text>
           </View>
 
+          <Text style={promotionsStyles.label}>Promotion Title *</Text>
           <TextInput
             style={promotionsStyles.input}
-            placeholder="Promotion Title *"
+            placeholder="e.g. 50% off Pizza"
             value={formData.title}
             onChangeText={(text) => setFormData({ ...formData, title: text })}
           />
 
+          <Text style={promotionsStyles.label}>Description (optional)</Text>
           <TextInput
-            style={[promotionsStyles.input, { height: 80 }]}
-            placeholder="Description (optional)"
+            style={[promotionsStyles.input, { height: 100 }]}
+            placeholder="Brief description..."
             value={formData.description}
             onChangeText={(text) => setFormData({ ...formData, description: text })}
             multiline
           />
 
+          <Text style={promotionsStyles.label}>Selling Price (₦) *</Text>
           <TextInput
             style={promotionsStyles.input}
-            placeholder="Selling Price (₦) *"
+            placeholder="2500"
             keyboardType="numeric"
             value={formData.price ? formData.price.toString() : ''}
             onChangeText={(text) => setFormData({ ...formData, price: Number(text) || 0 })}
           />
 
+          <Text style={promotionsStyles.label}>Original Price (₦) *</Text>
           <TextInput
             style={promotionsStyles.input}
-            placeholder="Original Price (₦) *"
+            placeholder="5000"
             keyboardType="numeric"
             value={formData.originalPrice ? formData.originalPrice.toString() : ''}
             onChangeText={(text) => setFormData({ ...formData, originalPrice: Number(text) || 0 })}
           />
 
+          <Text style={promotionsStyles.label}>Quantity Limit *</Text>
           <TextInput
             style={promotionsStyles.input}
-            placeholder="Quantity Limit *"
+            placeholder="10"
             keyboardType="numeric"
             value={formData.quantityLimit.toString()}
             onChangeText={(text) => setFormData({ ...formData, quantityLimit: Number(text) || 10 })}
           />
 
-          <Text style={{ fontWeight: '600', marginTop: 12, marginBottom: 8 }}>Expiry Date (Max 7 days)</Text>
+          <Text style={promotionsStyles.label}>Expiry Date (Max 7 days)</Text>
           <TouchableOpacity 
             style={[promotionsStyles.input, { justifyContent: 'center' }]} 
             onPress={() => setShowDatePicker(true)}

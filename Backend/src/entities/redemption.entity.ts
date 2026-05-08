@@ -8,7 +8,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Promotion } from './promotion.entity';
-import { User } from './user.entity'; // customer who redeems
+import { User } from './user.entity'; 
 
 @Entity('redemptions')
 export class Redemption {
@@ -30,7 +30,7 @@ export class Redemption {
   customerId!: string;
 
   @Column({ unique: true })
-  qrCode!: string; // unique redemption token (used in QR)
+  qrCode!: string;
 
   @Column({ default: false })
   isRedeemed!: boolean;
@@ -40,4 +40,7 @@ export class Redemption {
 
   @CreateDateColumn()
   createdAt!: Date;
+
+  @Column({ type: 'int', default: 1 })
+  quantity: number = 1;
 }

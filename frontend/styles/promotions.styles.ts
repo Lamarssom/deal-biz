@@ -21,28 +21,39 @@ export const promotionsStyles = StyleSheet.create({
     color: '#64748B',
     marginTop: 4,
   },
+
+  /* === FORM CARD (White + nice shadow) === */
   card: {
-    backgroundColor: '#E6ECF5',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
-    padding: 20,
-    marginHorizontal: 24,
-    marginBottom: 16,
+    padding: 24,
+    marginHorizontal: 20,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowRadius: 12,
+    elevation: 5,
   },
 
-  // ✅ NEW: Input styles
+  /* === INPUT STYLES (clear & readable) === */
   input: {
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    marginBottom: 20,
     fontSize: 16,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#FFFFFF',
+    color: '#0F172A',
+  },
+
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 8,
   },
 
   actionButton: {
@@ -50,30 +61,15 @@ export const promotionsStyles = StyleSheet.create({
     paddingVertical: 18,
     borderRadius: 999,
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: 8,
   },
   actionButtonText: {
     color: 'white',
     fontSize: 17,
     fontWeight: '600',
   },
-  secondaryButton: {
-    backgroundColor: '#E6ECF5',
-    borderWidth: 1,
-    borderColor: '#1C8EDA',
-    paddingVertical: 16,
-    borderRadius: 999,
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#0F172A',
-    marginHorizontal: 24,
-    marginTop: 24,
-    marginBottom: 12,
-  },
-    // === NEW TAB STYLES ===
+
+  /* Tab styles (unchanged) */
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: '#F1F5F9',
