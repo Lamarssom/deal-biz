@@ -92,10 +92,8 @@ export class PromotionsService {
       );
     }
 
-    // === HYBRID: Flat ₦25 creation fee ===
     const creationFee = 25;
 
-    // Validate Expiry Date
     const expiryDate = new Date(dto.expiry);
     if (expiryDate <= new Date()) {
       throw new BadRequestException('Expiry must be in the future');
@@ -109,17 +107,14 @@ export class PromotionsService {
       throw new BadRequestException('Promotion cannot exceed 7 days');
     }
 
-    // Price slashing validation
     if (dto.originalPrice && dto.price >= dto.originalPrice) {
       throw new BadRequestException(
         'Discounted price must be lower than original price',
       );
     }
 
-    // Radius & visibility still respect type (Standard vs Micro)
     const radiusKm = dto.type === PromotionType.STANDARD ? 3 : 1;
 
-    // Idempotency
     const idempotencyKey =
       dto.idempotencyKey || `promo-${merchantId}-${uuidv4()}`;
 
@@ -156,7 +151,6 @@ export class PromotionsService {
       merchantId,
     });
 
-    // Paystack – now for flat ₦25
     const paystackUrl = 'https://api.paystack.co/transaction/initialize';
     const payload = {
       amount: creationFee * 100,
@@ -265,7 +259,7 @@ export class PromotionsService {
     }
   }
 
-  // Helper method – NOW RETURNS PHOTOURL
+  // UPDATED: Now returns phoneNumber and address
   private formatPromotion(promo: Promotion, userLat: number, userLng: number) {
     return {
       id: promo.id,
@@ -277,12 +271,14 @@ export class PromotionsService {
       quantityLimit: promo.quantityLimit,
       redeemedCount: promo.redeemedCount || 0,
       views: promo.views || 0,
-      photoUrl: promo.photoUrl,                    // ← FIXED
+      photoUrl: promo.photoUrl,
       merchant: {
         id: promo.merchant.id,
         businessName: promo.merchant.businessName,
         category: promo.merchant.category,
         businessLGA: promo.merchant.businessLGA,
+        phoneNumber: promo.merchant.phoneNumber,
+        address: promo.merchant.address,
       },
       distanceKm: Number(
         this.locationService.calculateDistance(

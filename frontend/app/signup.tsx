@@ -38,6 +38,7 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [address, setAddress] = useState('');
 
   // Merchant fields
   const [businessName, setBusinessName] = useState('');
@@ -123,6 +124,7 @@ export default function SignupScreen() {
           category,
           businessLGA: lga,
           phoneNumber,
+          address,
         }),
       };
 
@@ -234,6 +236,21 @@ export default function SignupScreen() {
                     keyboardType="phone-pad"
                     style={signupStyles.input}
                     placeholderTextColor="#94A3B8"
+                  />
+                </View>
+              </View>
+
+              <View style={signupStyles.inputGroup}>
+                <Text style={signupStyles.label}>Business Address</Text>
+                <View style={signupStyles.inputWrapper}>
+                  <Feather name="map-pin" size={20} color="#64748B" />
+                  <TextInput
+                    value={address}
+                    onChangeText={setAddress}
+                    placeholder="Full street address"
+                    style={signupStyles.input}
+                    placeholderTextColor="#94A3B8"
+                    multiline
                   />
                 </View>
               </View>

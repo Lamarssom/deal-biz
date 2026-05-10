@@ -23,6 +23,9 @@ export class Merchant {
   @Column({ type: 'enum', enum: ['MERCHANT'], default: 'MERCHANT' })
   role!: 'MERCHANT';
 
+  @Column({ nullable: true })
+  address?: string;
+
   @Column()
   businessName!: string;
 

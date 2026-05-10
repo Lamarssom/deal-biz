@@ -79,13 +79,26 @@ export default function MyRedemptionsScreen() {
           ) : (
             activeVouchers.map((redemption) => (
               <View key={redemption.id} style={redemptionStyles.card}>
-                {/* Promotion title - now clearly visible */}
                 <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 4 }}>
                   {redemption.promotion?.title}
                 </Text>
-                <Text style={{ color: '#64748B', marginBottom: 16 }}>
+                <Text style={{ color: '#64748B', marginBottom: 8 }}>
                   {redemption.promotion?.merchant?.businessName}
                 </Text>
+
+                {/* Phone + Address - permanently shown for active vouchers */}
+                <View style={{ marginBottom: 16 }}>
+                  {redemption.promotion?.merchant?.phoneNumber && (
+                    <Text style={{ color: '#10B981', fontWeight: '600', marginBottom: 4 }}>
+                      📞 {redemption.promotion.merchant.phoneNumber}
+                    </Text>
+                  )}
+                  {redemption.promotion?.merchant?.address && (
+                    <Text style={{ color: '#64748B' }}>
+                      📍 {redemption.promotion.merchant.address}
+                    </Text>
+                  )}
+                </View>
 
                 <View style={redemptionStyles.qrContainer}>
                   <QRCode value={redemption.qrCode} size={240} color="#1C8EDA" />

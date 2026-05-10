@@ -5,9 +5,21 @@ export const promotionStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#E6ECF5',
   },
+  heroImage: {
+    width: '100%',
+    height: 240,
+    resizeMode: 'cover',
+  },
+  heroPlaceholder: {
+    width: '100%',
+    height: 240,
+    backgroundColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   header: {
     paddingHorizontal: 24,
-    paddingTop: 60,
+    paddingTop: 20,
     paddingBottom: 20,
   },
   title: {

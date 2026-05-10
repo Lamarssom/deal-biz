@@ -6,7 +6,6 @@ import {
   TouchableOpacity, 
   Alert, 
   ActivityIndicator, 
-  TextInput,
   Modal,
   Image
 } from 'react-native';
@@ -22,8 +21,8 @@ export default function PromotionDetail() {
 
   const [promotion, setPromotion] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [qrGenerated, setQrGenerated] = useState(false);   // Will be set persistently
 
-  // Quantity selector states
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [selectedQuantity, setSelectedQuantity] = useState(1);
 
@@ -31,11 +30,23 @@ export default function PromotionDetail() {
     if (id) loadPromotionDetails(id);
   }, [id]);
 
+  // Load promotion + check if user already generated QR for it
   const loadPromotionDetails = async (promotionId: string) => {
     try {
-      const promotions = await apiService.getNearbyPromotions(6.5, 3.4, 50);
-      const found = promotions.find((p: any) => p.id === promotionId);
+      const [promotionsData, redemptionsData] = await Promise.all([
+        apiService.getNearbyPromotions(6.5, 3.4, 50),
+        apiService.getMyRedemptions()
+      ]);
+
+      const found = promotionsData.find((p: any) => p.id === promotionId);
       setPromotion(found);
+
+      // Check if user has already generated QR for this promotion
+      const hasGenerated = redemptionsData.some(
+        (r: any) => r.promotion?.id === promotionId && !r.isRedeemed
+      );
+      setQrGenerated(hasGenerated);
+
     } catch (error) {
       Alert.alert("Error", "Failed to load promotion details");
     } finally {
@@ -43,20 +54,19 @@ export default function PromotionDetail() {
     }
   };
 
-  const handleGenerateQR = () => {
-    setShowQuantityModal(true);
-  };
+  const handleGenerateQR = () => setShowQuantityModal(true);
 
   const confirmGenerateQR = async () => {
     if (!promotion) return;
-    
     setShowQuantityModal(false);
     
     try {
-      const response = await apiService.generateQR({
+      await apiService.generateQR({
         promotionId: promotion.id,
         quantity: selectedQuantity
       });
+
+      setQrGenerated(true);   // Make it persistent
 
       Alert.alert(
         "QR Code Generated", 
@@ -85,19 +95,16 @@ export default function PromotionDetail() {
 
   return (
     <ScrollView style={promotionStyles.container} showsVerticalScrollIndicator={false}>
-      {/* LARGE PROMOTION IMAGE */}
+      
+      {/* Hero Image */}
       {promotion.photoUrl ? (
         <Image 
           source={{ uri: promotion.photoUrl }} 
-          style={{ width: '100%', height: 240, resizeMode: 'cover' }}
+          style={promotionStyles.heroImage}
+          resizeMode="cover"
         />
       ) : (
-        <View style={{ 
-          height: 240, 
-          backgroundColor: '#E2E8F0', 
-          justifyContent: 'center', 
-          alignItems: 'center' 
-        }}>
+        <View style={promotionStyles.heroPlaceholder}>
           <Text style={{ color: '#64748B', fontSize: 16 }}>No image available</Text>
         </View>
       )}
@@ -116,11 +123,20 @@ export default function PromotionDetail() {
           {promotion.merchant?.businessName}
         </Text>
 
-        {/* MERCHANT PHONE NUMBER */}
-        {promotion.merchant?.phoneNumber && (
-          <Text style={{ color: '#10B981', fontWeight: '600', marginTop: 4 }}>
-            📞 {promotion.merchant.phoneNumber}
-          </Text>
+        {/* Phone + Address - now PERSISTENT */}
+        {(qrGenerated || promotion.merchant?.phoneNumber || promotion.merchant?.address) && (
+          <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
+            {promotion.merchant?.phoneNumber && (
+              <Text style={{ color: '#10B981', fontWeight: '600', marginBottom: 6 }}>
+                📞 {promotion.merchant.phoneNumber}
+              </Text>
+            )}
+            {promotion.merchant?.address && (
+              <Text style={{ color: '#64748B', marginBottom: 6 }}>
+                📍 {promotion.merchant.address}
+              </Text>
+            )}
+          </View>
         )}
 
         <Text style={promotionStyles.metaText}>
@@ -131,7 +147,6 @@ export default function PromotionDetail() {
           <Text style={promotionStyles.description}>{promotion.description}</Text>
         )}
 
-        {/* Generate QR Button */}
         {user && (
           <TouchableOpacity 
             onPress={handleGenerateQR}
@@ -151,18 +166,14 @@ export default function PromotionDetail() {
         <Text style={{ color: '#1C8EDA', fontWeight: '600' }}>← Back to Home</Text>
       </TouchableOpacity>
 
-      {/* Quantity Selection Modal */}
+      {/* Quantity Modal */}
       <Modal
         visible={showQuantityModal}
         transparent
         animationType="slide"
         onRequestClose={() => setShowQuantityModal(false)}
       >
-        <View style={{
-          flex: 1,
-          justifyContent: 'flex-end',
-          backgroundColor: 'rgba(0,0,0,0.6)'
-        }}>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
           <View style={{
             backgroundColor: '#FFFFFF',
             borderTopLeftRadius: 24,
