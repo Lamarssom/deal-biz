@@ -7,7 +7,8 @@ import {
   Alert, 
   ActivityIndicator, 
   TextInput,
-  Modal 
+  Modal,
+  Image
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
@@ -84,6 +85,23 @@ export default function PromotionDetail() {
 
   return (
     <ScrollView style={promotionStyles.container} showsVerticalScrollIndicator={false}>
+      {/* LARGE PROMOTION IMAGE */}
+      {promotion.photoUrl ? (
+        <Image 
+          source={{ uri: promotion.photoUrl }} 
+          style={{ width: '100%', height: 240, resizeMode: 'cover' }}
+        />
+      ) : (
+        <View style={{ 
+          height: 240, 
+          backgroundColor: '#E2E8F0', 
+          justifyContent: 'center', 
+          alignItems: 'center' 
+        }}>
+          <Text style={{ color: '#64748B', fontSize: 16 }}>No image available</Text>
+        </View>
+      )}
+
       <View style={promotionStyles.header}>
         <Text style={promotionStyles.title}>{promotion.title}</Text>
       </View>
@@ -97,6 +115,14 @@ export default function PromotionDetail() {
         <Text style={promotionStyles.merchantName}>
           {promotion.merchant?.businessName}
         </Text>
+
+        {/* MERCHANT PHONE NUMBER */}
+        {promotion.merchant?.phoneNumber && (
+          <Text style={{ color: '#10B981', fontWeight: '600', marginTop: 4 }}>
+            📞 {promotion.merchant.phoneNumber}
+          </Text>
+        )}
+
         <Text style={promotionStyles.metaText}>
           {promotion.distanceKm}km away • Expires {new Date(promotion.expiry).toLocaleDateString('en-NG')}
         </Text>
@@ -151,7 +177,6 @@ export default function PromotionDetail() {
               {promotion.title} — ₦{promotion.price} each
             </Text>
 
-            {/* Quick buttons */}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginBottom: 24 }}>
               {[1, 2, 3, 5, 10].map(q => (
                 <TouchableOpacity

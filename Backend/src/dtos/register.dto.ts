@@ -1,18 +1,23 @@
 //\src\dtos\register.dto.ts
-import { IsEmail, IsNotEmpty, IsEnum, MinLength, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsEnum, MinLength, IsOptional, IsString, IsPhoneNumber } from 'class-validator';
 import type { Role } from '../entities/user.entity';
 
 export class RegisterDto {
   @IsEmail()
   @IsNotEmpty()
-  email: string;
+  email!: string;
+
+  @IsOptional()
+  @IsString()
+  @IsPhoneNumber()
+  phoneNumber?: string;
 
   @IsNotEmpty()
   @MinLength(6)
-  password: string;
+  password!: string;
 
   @IsEnum(['CUSTOMER', 'MERCHANT'])
-  role: Role;
+  role!: Role;
 
   @IsOptional()
   @IsString()

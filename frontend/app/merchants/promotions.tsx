@@ -8,9 +8,12 @@ import {
   TextInput, 
   Platform, 
   Modal,
-  ActivityIndicator
+  ActivityIndicator,
+  Image,
+  RefreshControl
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import WebView from 'react-native-webview';
 
@@ -24,7 +27,6 @@ export default function MerchantPromotionsScreen() {
 
   const [activeTab, setActiveTab] = useState<'overview' | 'create' | 'my'>('overview');
 
-  // New states for My Promotions
   const [myPromotions, setMyPromotions] = useState<any[]>([]);
   const [myPromotionsLoading, setMyPromotionsLoading] = useState(false);
 
@@ -36,7 +38,6 @@ export default function MerchantPromotionsScreen() {
   const [settleAmount, setSettleAmount] = useState('50');
 
   const [showDatePicker, setShowDatePicker] = useState(false);
-  
   const [showPaymentWebView, setShowPaymentWebView] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string>('');
 
@@ -52,14 +53,22 @@ export default function MerchantPromotionsScreen() {
     expiry: maxExpiryDate.toISOString(),
     quantityLimit: 10,
     description: "",
+    photoUrl: "",
   });
 
-  // Load analytics on mount
+  // Auto-refresh analytics when switching to Overview tab
+  useEffect(() => {
+    if (activeTab === 'overview') {
+      loadAnalytics();
+    }
+  }, [activeTab]);
+
+  // Initial load
   useEffect(() => {
     loadAnalytics();
   }, []);
 
-  // Load My Promotions when user switches to "My" tab
+  // Load My Promotions when tab changes
   useEffect(() => {
     if (activeTab === 'my') {
       loadMyPromotions();
@@ -67,12 +76,13 @@ export default function MerchantPromotionsScreen() {
   }, [activeTab]);
 
   const loadAnalytics = async () => {
+    setAnalyticsLoading(true);
     try {
       const analytics = await apiService.getMerchantAnalytics();
       const balance = analytics?.outstandingBalance;
       setOutstandingBalance(typeof balance === 'number' ? balance : 0);
-    } catch (error) {
-      console.log('Failed to load analytics', error);
+    } catch (error: any) {
+      console.error('Failed to load analytics:', error);
       setOutstandingBalance(0);
     } finally {
       setAnalyticsLoading(false);
@@ -89,6 +99,20 @@ export default function MerchantPromotionsScreen() {
       Alert.alert('Error', 'Could not load your promotions');
     } finally {
       setMyPromotionsLoading(false);
+    }
+  };
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets[0]) {
+      const uri = result.assets[0].uri;
+      setFormData(prev => ({ ...prev, photoUrl: uri }));
     }
   };
 
@@ -111,7 +135,16 @@ export default function MerchantPromotionsScreen() {
 
     setLoading(true);
     try {
-      const response = await apiService.createPromotionWithPayment(formData);
+      let finalPhotoUrl = formData.photoUrl;
+
+      if (finalPhotoUrl && finalPhotoUrl.startsWith('file://')) {
+        Alert.alert("Uploading image...", "Please wait");
+        finalPhotoUrl = await apiService.uploadImageToCloudinary(finalPhotoUrl);
+      }
+
+      const payload = { ...formData, photoUrl: finalPhotoUrl };
+
+      const response = await apiService.createPromotionWithPayment(payload);
       if (response?.authorizationUrl) {
         setPaymentUrl(response.authorizationUrl);
         setShowPaymentWebView(true);
@@ -135,7 +168,7 @@ export default function MerchantPromotionsScreen() {
       await apiService.settleMerchantBalance({ amount });
       Alert.alert('Success', `₦${amount} settlement initiated!`);
       setSettleAmount('50');
-      loadAnalytics();
+      loadAnalytics(); // Refresh balance immediately
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to settle balance');
     } finally {
@@ -155,14 +188,16 @@ export default function MerchantPromotionsScreen() {
   };
 
   return (
-    <ScrollView style={promotionsStyles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
+    <ScrollView 
+      style={promotionsStyles.container} 
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={analyticsLoading} onRefresh={loadAnalytics} />}
+    >
       <View style={promotionsStyles.header}>
         <Text style={promotionsStyles.title}>Merchant Dashboard</Text>
         <Text style={promotionsStyles.subtitle}>Manage promotions & account</Text>
       </View>
 
-      {/* TABS */}
       <View style={promotionsStyles.tabContainer}>
         <TouchableOpacity 
           style={[promotionsStyles.tab, activeTab === 'overview' && promotionsStyles.tabActive]}
@@ -192,24 +227,17 @@ export default function MerchantPromotionsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* TAB CONTENT */}
-
+      {/* OVERVIEW TAB - Balance now refreshes properly */}
       {activeTab === 'overview' && (
         <>
-          {/* Balance Card */}
           <View style={promotionsStyles.card}>
             <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 8 }}>Outstanding Balance</Text>
             <Text style={{ fontSize: 36, fontWeight: '700', color: '#1C8EDA' }}>
-              ₦{analyticsLoading 
-                ? '---' 
-                : (typeof outstandingBalance === 'number' 
-                    ? outstandingBalance.toFixed(2) 
-                    : '0.00')}
+              ₦{analyticsLoading ? '---' : (typeof outstandingBalance === 'number' ? outstandingBalance.toFixed(2) : '0.00')}
             </Text>
             <Text style={{ color: '#64748B' }}>Current debt</Text>
           </View>
 
-          {/* Settle Balance */}
           <View style={promotionsStyles.card}>
             <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 16 }}>Settle Balance</Text>
             <TextInput
@@ -232,14 +260,32 @@ export default function MerchantPromotionsScreen() {
         </>
       )}
 
+      {/* CREATE TAB */}
       {activeTab === 'create' && (
         <View style={promotionsStyles.card}>
           <Text style={{ fontSize: 20, fontWeight: '700', marginBottom: 20 }}>Create New Promotion</Text>
 
-          <Text style={promotionsStyles.label}>Promotion Type</Text>
-          <View style={[promotionsStyles.input, { justifyContent: 'center' }]}>
-            <Text style={{ fontSize: 16, color: '#1C8EDA', fontWeight: '600' }}>STANDARD</Text>
-          </View>
+          {/* Image Picker */}
+          <TouchableOpacity 
+            onPress={pickImage}
+            style={{
+              height: 180,
+              backgroundColor: '#F1F5F9',
+              borderRadius: 16,
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginBottom: 20,
+              borderWidth: 2,
+              borderColor: '#E2E8F0',
+              borderStyle: 'dashed'
+            }}
+          >
+            {formData.photoUrl ? (
+              <Image source={{ uri: formData.photoUrl }} style={{ width: '100%', height: '100%', borderRadius: 16 }} resizeMode="cover" />
+            ) : (
+              <Text style={{ color: '#64748B' }}>Tap to add promotion photo (optional)</Text>
+            )}
+          </TouchableOpacity>
 
           <Text style={promotionsStyles.label}>Promotion Title *</Text>
           <TextInput
@@ -291,9 +337,7 @@ export default function MerchantPromotionsScreen() {
             onPress={() => setShowDatePicker(true)}
           >
             <Text style={{ fontSize: 16 }}>
-              {new Date(formData.expiry).toLocaleDateString('en-NG', {
-                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-              })}
+              {new Date(formData.expiry).toLocaleDateString('en-NG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
             </Text>
           </TouchableOpacity>
 
@@ -320,7 +364,7 @@ export default function MerchantPromotionsScreen() {
         </View>
       )}
 
-      {/* === REAL MY PROMOTIONS TAB === */}
+      {/* MY PROMOTIONS TAB */}
       {activeTab === 'my' && (
         <View style={{ paddingHorizontal: 20 }}>
           <Text style={{ fontSize: 20, fontWeight: '700', marginBottom: 16 }}>My Promotions</Text>

@@ -78,6 +78,7 @@ export class AuthService {
       businessName: dto.businessName,
       category: dto.category,
       businessLGA: dto.businessLGA,
+      phoneNumber: dto.phoneNumber,
       verificationCode: code,
       verificationExpiresAt: new Date(Date.now() + 15 * 60 * 1000),
     });

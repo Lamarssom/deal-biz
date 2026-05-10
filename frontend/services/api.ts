@@ -6,6 +6,9 @@ const API_BASE_URL = __DEV__
   ? 'http://192.168.0.168:3000'  // Use IP address for mobile simulators
   : 'http://localhost:3000';     // Use localhost for web development
 
+const CLOUDINARY_CLOUD_NAME = 'dzvajdc4b';     
+const CLOUDINARY_UPLOAD_PRESET = 'dealbiz';
+
 export interface RegisterPayload {
   email: string;
   password: string;
@@ -353,6 +356,32 @@ class ApiService {
       undefined,
       true
     );
+  }
+
+  async uploadImageToCloudinary(uri: string): Promise<string> {
+    if (Platform.OS === 'web') {
+      throw new Error('Image upload not supported on web yet');
+    }
+
+    const formData = new FormData();
+    formData.append('file', {
+      uri,
+      type: 'image/jpeg',
+      name: 'promotion.jpg',
+    } as any);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+
+    const data = await response.json();
+    if (data.secure_url) return data.secure_url;
+    throw new Error('Failed to upload image');
   }
 }
 

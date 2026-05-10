@@ -14,6 +14,9 @@ export class Merchant {
   @Column({ unique: true })
   email!: string;
 
+  @Column({ nullable: true })
+  phoneNumber!: string;
+
   @Column({ select: false })
   password!: string;
 

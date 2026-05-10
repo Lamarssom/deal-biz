@@ -10,63 +10,63 @@ export enum PromotionType {
 @Entity('promotions')
 export class Promotion {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @ManyToOne(() => Merchant, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'merchantId' })
-  merchant: Merchant;
+  merchant!: Merchant;
 
   @Column({ nullable: false })
-  merchantId: string;
+  merchantId!: string;
 
   @Column({ type: 'enum', enum: PromotionType })
-  type: PromotionType;
+  type!: PromotionType;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
-  fee: number; // ₦25
+  fee!: number; // ₦25
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-  price: number; // deal price
+  price!: number; // deal price
 
   @Column({ nullable: true })
-  originalPrice: number; // for discount visibility
+  originalPrice!: number; // for discount visibility
 
   @Column()
-  title: string;
+  title!: string;
 
   @Column({ type: 'text', nullable: true })
-  description: string;
+  description!: string;
 
   @Column({ nullable: true })
-  photoUrl: string; // only for STANDARD
+  photoUrl!: string; // only for STANDARD
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
-  radiusKm: number; // 3km for Standard, 1km for Micro
+  radiusKm!: number; // 3km for Standard, 1km for Micro
 
   @Column({ type: 'timestamp' })
-  expiry: Date;
+  expiry!: Date;
 
   @Column({ default: 0 })
-  quantityLimit: number; // 0 = unlimited
+  quantityLimit!: number; // 0 = unlimited
 
   @Column({ default: 0 })
-  redeemedCount: number;
+  redeemedCount!: number;
 
   @Column({ default: 0 })
-  views: number;
+  views!: number;
 
   @Column({ default: 0 })
-  popularityScore: number; // for ranking (redemptions + views)
+  popularityScore!: number; // for ranking (redemptions + views)
 
   @Column({ default: true })
-  isActive: boolean;
+  isActive!: boolean;
 
   @Column({ nullable: true })
-  idempotencyKey: string; // for payment safety
+  idempotencyKey!: string; // for payment safety
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 }

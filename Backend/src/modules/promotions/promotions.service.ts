@@ -78,7 +78,7 @@ export class PromotionsService {
       );
     }
 
-    // Max of 3 activve promos
+    // Max of 3 active promos
     const activePromos = await this.promotionRepo.count({
       where: {
         merchantId,
@@ -119,7 +119,7 @@ export class PromotionsService {
     // Radius & visibility still respect type (Standard vs Micro)
     const radiusKm = dto.type === PromotionType.STANDARD ? 3 : 1;
 
-    // Idempotency (reuse your existing pattern)
+    // Idempotency
     const idempotencyKey =
       dto.idempotencyKey || `promo-${merchantId}-${uuidv4()}`;
 
@@ -136,7 +136,7 @@ export class PromotionsService {
       merchant,
       merchantId,
       type: dto.type,
-      fee: creationFee, // now always 25
+      fee: creationFee,
       price: Number(dto.price),
       originalPrice: Number(dto.originalPrice),
       title: dto.title,
@@ -146,7 +146,7 @@ export class PromotionsService {
       expiry: new Date(dto.expiry),
       quantityLimit: dto.quantityLimit,
       idempotencyKey,
-      isActive: false, // pending payment
+      isActive: false,
     });
 
     const savedPromo = await this.promotionRepo.save(promotion);
@@ -159,7 +159,7 @@ export class PromotionsService {
     // Paystack – now for flat ₦25
     const paystackUrl = 'https://api.paystack.co/transaction/initialize';
     const payload = {
-      amount: creationFee * 100, // kobo
+      amount: creationFee * 100,
       email: merchant.email,
       reference: idempotencyKey,
       metadata: {
@@ -204,13 +204,12 @@ export class PromotionsService {
   async getNearbyPromotions(
     userLat: number,
     userLng: number,
-    radiusKm: number = 15,   // Increased default
+    radiusKm: number = 15,
     limit: number = 20,
   ): Promise<any[]> {
     try {
       console.log(`Searching promotions near: ${userLat}, ${userLng} (radius: ${radiusKm}km)`);
 
-      // 1. Get merchants in radius
       const merchants = await this.locationService.findMerchantsInRadius(
         userLat,
         userLng,
@@ -222,14 +221,12 @@ export class PromotionsService {
 
       if (merchants.length === 0) {
         console.log('No merchants in radius. Trying wider search (30km)...');
-        // Fallback: wider search
         const widerMerchants = await this.locationService.findMerchantsInRadius(
           userLat, userLng, 30, 50
         );
 
         if (widerMerchants.length === 0) {
-          // Ultimate fallback: return all active promotions
-          console.log('No merchants found even in wide radius. Returning all active promotions.');
+          console.log('Returning all active promotions as fallback');
           const allActive = await this.promotionRepo.find({
             where: { isActive: true, expiry: MoreThan(new Date()) },
             relations: ['merchant'],
@@ -239,7 +236,6 @@ export class PromotionsService {
           return allActive.map(p => this.formatPromotion(p, userLat, userLng));
         }
 
-        // Use wider results
         const merchantIds = widerMerchants.map(m => m.id);
         const promotions = await this.promotionRepo.find({
           where: { merchantId: In(merchantIds), isActive: true, expiry: MoreThan(new Date()) },
@@ -250,7 +246,6 @@ export class PromotionsService {
         return this.formatAndRankPromotions(promotions, userLat, userLng, limit);
       }
 
-      // Normal flow
       const merchantIds = merchants.map(m => m.id);
       const promotions = await this.promotionRepo.find({
         where: {
@@ -270,7 +265,7 @@ export class PromotionsService {
     }
   }
 
-  // Helper method
+  // Helper method – NOW RETURNS PHOTOURL
   private formatPromotion(promo: Promotion, userLat: number, userLng: number) {
     return {
       id: promo.id,
@@ -282,6 +277,7 @@ export class PromotionsService {
       quantityLimit: promo.quantityLimit,
       redeemedCount: promo.redeemedCount || 0,
       views: promo.views || 0,
+      photoUrl: promo.photoUrl,                    // ← FIXED
       merchant: {
         id: promo.merchant.id,
         businessName: promo.merchant.businessName,
@@ -340,10 +336,12 @@ export class PromotionsService {
   }
 
   async getMyPromotions(merchantId: string) {
-    return await this.promotionRepo.find({
+    const promotions = await this.promotionRepo.find({
       where: { merchantId },
       relations: ['merchant'],
       order: { createdAt: 'DESC' },
     });
+
+    return promotions.map(p => this.formatPromotion(p, 0, 0));
   }
 }

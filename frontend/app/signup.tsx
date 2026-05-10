@@ -44,6 +44,7 @@ export default function SignupScreen() {
   const [category, setCategory] = useState('');
   const [state, setState] = useState('');
   const [lga, setLga] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
 
   // Location data
   const [states, setStates] = useState<StateType[]>([]);
@@ -121,6 +122,7 @@ export default function SignupScreen() {
           businessName,
           category,
           businessLGA: lga,
+          phoneNumber,
         }),
       };
 
@@ -215,6 +217,21 @@ export default function SignupScreen() {
                     value={businessName}
                     onChangeText={setBusinessName}
                     placeholder="Business name"
+                    style={signupStyles.input}
+                    placeholderTextColor="#94A3B8"
+                  />
+                </View>
+              </View>
+
+              <View style={signupStyles.inputGroup}>
+                <Text style={signupStyles.label}>Phone Number</Text>
+                <View style={signupStyles.inputWrapper}>
+                  <Feather name="phone" size={20} color="#64748B" />
+                  <TextInput
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
+                    placeholder="+234 801 234 5678"
+                    keyboardType="phone-pad"
                     style={signupStyles.input}
                     placeholderTextColor="#94A3B8"
                   />

@@ -7,7 +7,8 @@ import {
   TextInput, 
   Alert,
   ActivityIndicator,
-  RefreshControl,   // ← Added
+  Image,
+  RefreshControl
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -36,7 +37,6 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (isLoading) return;
-
     if (!isSignedIn || !user) {
       router.replace('/login');
     } else {
@@ -48,17 +48,12 @@ export default function HomeScreen() {
     setLocationLoading(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      
       if (status !== 'granted') {
         Alert.alert("Permission Denied", "Using default Lagos location");
         await loadPromotions(6.5244, 3.3792);
         return;
       }
-
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
+      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       await loadPromotions(location.coords.latitude, location.coords.longitude);
     } catch (error) {
       console.log("Location error:", error);
@@ -73,7 +68,12 @@ export default function HomeScreen() {
       console.log(`📍 Fetching promotions near: ${lat}, ${lng}`);
       const data = await apiService.getNearbyPromotions(lat, lng, 30);
       console.log(`✅ Received ${data.length} promotions`);
-      setPromotions(data);   // ← This will now clear old data
+
+      if (data.length > 0) {
+        console.log("🔍 FULL PROMOTION OBJECT:", JSON.stringify(data[0], null, 2));
+      }
+
+      setPromotions(data);
     } catch (error) {
       console.error('Failed to load promotions:', error);
     } finally {
@@ -81,22 +81,24 @@ export default function HomeScreen() {
     }
   };
 
-  // Pull-to-refresh handler
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadPromotions(6.5244, 3.3792);   // or use real location if available
+    await loadPromotions(6.5244, 3.3792);
     setRefreshing(false);
   };
 
-  const goToPromotions = () => {
-    router.push('/merchants/promotions');
-  };
+  const goToPromotions = () => router.push('/merchants/promotions');
 
   const handlePromotionPress = (promotionId: string) => {
-    router.push({
-      pathname: '/promotions/[id]',
-      params: { id: promotionId },
-    });
+    router.push({ pathname: '/promotions/[id]', params: { id: promotionId } });
+  };
+
+  // Safe image check (prevents local file:// errors)
+  const getImageSource = (photoUrl: string | undefined) => {
+    if (!photoUrl || photoUrl.startsWith('file://')) {
+      return null; // will show placeholder
+    }
+    return { uri: photoUrl };
   };
 
   if (isLoading) {
@@ -112,11 +114,9 @@ export default function HomeScreen() {
       <ScrollView 
         style={homeStyles.container} 
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#1C8EDA']} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Header - same as before */}
+        {/* Header */}
         <View style={homeStyles.header}>
           <View>
             <Text style={homeStyles.greeting}>
@@ -144,9 +144,15 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Search Bar - same */}
-
-        {/* Featured Deal - same */}
+        {/* Search Bar */}
+        <View style={homeStyles.searchContainer}>
+          <Feather name="search" size={22} color="#64748B" />
+          <TextInput
+            style={homeStyles.searchInput}
+            placeholder="Search deals, merchants..."
+            placeholderTextColor="#94A3B8"
+          />
+        </View>
 
         {/* Nearby Promotions */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 20 }}>
@@ -168,6 +174,26 @@ export default function HomeScreen() {
               onPress={() => handlePromotionPress(promo.id)}
               activeOpacity={0.8}
             >
+              {/* SAFE IMAGE RENDERING */}
+              {promo.photoUrl && !promo.photoUrl.startsWith('file://') ? (
+                <Image 
+                  source={{ uri: promo.photoUrl }} 
+                  style={{ width: '100%', height: 160, borderRadius: 16, marginBottom: 12 }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={{ 
+                  height: 160, 
+                  backgroundColor: '#E2E8F0', 
+                  borderRadius: 16, 
+                  marginBottom: 12,
+                  justifyContent: 'center', 
+                  alignItems: 'center' 
+                }}>
+                  <Text style={{ color: '#64748B', fontWeight: '500' }}>📸 No image</Text>
+                </View>
+              )}
+
               <Text style={{ fontSize: 18, fontWeight: '600', color: '#0F172A' }}>
                 {promo.title}
               </Text>
@@ -192,7 +218,7 @@ export default function HomeScreen() {
           ))
         )}
 
-        {/* Categories - same */}
+        {/* Categories Section */}
         <Text style={[homeStyles.sectionTitle, { marginTop: 20 }]}>Explore Categories</Text>
         
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 12, marginBottom: 40 }}>
