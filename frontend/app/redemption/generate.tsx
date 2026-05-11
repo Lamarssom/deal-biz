@@ -21,7 +21,10 @@ export default function GenerateQR() {
 
   const generateQRCode = async () => {
     try {
-      const response = await apiService.generateQR({ promotionId });
+      const response = await apiService.generateQR({
+        promotionId,
+        quantity: 0
+      });
       setQrData(response);
     } catch (error: any) {
       Alert.alert("Error", error?.message || "Failed to generate QR code");

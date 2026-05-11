@@ -1,4 +1,4 @@
-// modules/merchants/merchants.service.ts
+// Backend/src/modules/merchants/merchants.service.ts
 import {
   Injectable,
   NotFoundException,
@@ -7,12 +7,11 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Merchant } from '../../entities/merchant.entity';
-import { getBoundingBox } from '../../common/utils/bounding-box';
-import { calculateHaversineDistance } from '../../common/utils/haversine';
 import { LGA } from '../../entities/lga.entity';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+import { getBoundingBox } from '../../common/utils/bounding-box';
 
 @Injectable()
 export class MerchantsService {
@@ -27,24 +26,48 @@ export class MerchantsService {
   ) {}
 
   async create(data: Partial<Merchant>) {
+    console.log('MerchantsService.create() received raw data:', {
+      latitude: data.latitude,
+      longitude: data.longitude,
+      businessLGA: data.businessLGA,
+      address: data.address,
+    });
+
     if (!data.businessLGA) {
       throw new Error('Business LGA is required');
     }
 
-    const lga = await this.lgaRepo.findOne({
-      where: { lga: data.businessLGA },
-    });
+    const merchantData: Partial<Merchant> = {
+      ...data,
+      isVerified: false,
+      isActive: true,
+      outstandingBalance: 0,
+    };
 
-    if (!lga) {
-      throw new Error('Invalid LGA');
+    const hasValidMapboxCoords = 
+      typeof data.latitude === 'number' && 
+      typeof data.longitude === 'number' &&
+      data.latitude !== 0 && 
+      data.longitude !== 0 &&
+      Math.abs(data.latitude) > 1 && 
+      Math.abs(data.longitude) > 1;
+
+    if (hasValidMapboxCoords) {
+      console.log('✅ Using accurate Mapbox coordinates from signup');
+      merchantData.latitude = data.latitude;
+      merchantData.longitude = data.longitude;
+    } else {
+      console.log('⚠️ No valid Mapbox coordinates → falling back to LGA');
+      const lga = await this.lgaRepo.findOne({
+        where: { lga: data.businessLGA },
+      });
+      if (lga) {
+        merchantData.latitude = lga.latitude;
+        merchantData.longitude = lga.longitude;
+      }
     }
 
-    const merchant = this.merchantRepo.create({
-      ...data,
-      latitude: lga.latitude,
-      longitude: lga.longitude,
-    });
-
+    const merchant = this.merchantRepo.create(merchantData);
     return merchant;
   }
 
@@ -77,7 +100,6 @@ export class MerchantsService {
 
   async findNearby(lat: number, lng: number, radius = 10) {
     const { minLat, maxLat, minLng, maxLng } = getBoundingBox(lat, lng, radius);
-
     const merchants = await this.merchantRepo.query(
       `
         SELECT *,
@@ -112,16 +134,13 @@ export class MerchantsService {
   }
 
   async settleBalance(merchantId: string, amount: number) {
-    const merchant = await this.merchantRepo.findOne({
-      where: { id: merchantId },
-    });
+    const merchant = await this.merchantRepo.findOne({ where: { id: merchantId } });
     if (!merchant) throw new NotFoundException('Merchant not found');
 
     if (amount > merchant.outstandingBalance) {
       throw new BadRequestException('Amount exceeds outstanding balance');
     }
 
-    // Paystack payment for balance
     const paystackUrl = 'https://api.paystack.co/transaction/initialize';
     const payload = {
       amount: Math.round(amount * 100),

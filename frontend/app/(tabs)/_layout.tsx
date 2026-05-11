@@ -27,7 +27,7 @@ export default function TabLayout() {
       initialRouteName="home"
     >
       <Tabs.Screen name="home" options={{ title: 'Home', tabBarIcon: ({ color, size }) => <Feather name="home" size={size} color={color} /> }} />
-      <Tabs.Screen name="redemptions" options={{ title: 'Vouchers', tabBarIcon: ({ color, size }) => <Feather name="tag" size={size} color={color} /> }} />
+      <Tabs.Screen name="redemptions" options={{ title: 'My Activity', tabBarIcon: ({ color, size }) => <Feather name="tag" size={size} color={color} /> }} />
 
       {/* Scan tab - now 100% hidden for customers */}
       <Tabs.Screen

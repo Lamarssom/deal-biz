@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import * as Location from 'expo-location';
 import { 
   ScrollView, 
   View, 
@@ -7,9 +8,10 @@ import {
   Alert, 
   ActivityIndicator, 
   Modal,
-  Image
+  Image,
+  Platform
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../services/api';
 import { promotionStyles } from '../../styles/promotion.styles';
@@ -21,32 +23,58 @@ export default function PromotionDetail() {
 
   const [promotion, setPromotion] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [qrGenerated, setQrGenerated] = useState(false);   // Will be set persistently
+  const [qrGenerated, setQrGenerated] = useState(false);
 
   const [showQuantityModal, setShowQuantityModal] = useState(false);
   const [selectedQuantity, setSelectedQuantity] = useState(1);
 
-  useEffect(() => {
-    if (id) loadPromotionDetails(id);
-  }, [id]);
+  const [userLat, setUserLat] = useState<number>(6.5244);
+  const [userLng, setUserLng] = useState<number>(3.3792);
 
-  // Load promotion + check if user already generated QR for it
-  const loadPromotionDetails = async (promotionId: string) => {
+  // Auto-refresh when returning to this screen
+  useFocusEffect(
+    useCallback(() => {
+      getRealUserLocation();
+    }, [])
+  );
+
+  const getRealUserLocation = async () => {
+    if (Platform.OS === 'web') {
+      await loadPromotionDetails(6.5244, 3.3792);
+      return;
+    }
+
     try {
-      const [promotionsData, redemptionsData] = await Promise.all([
-        apiService.getNearbyPromotions(6.5, 3.4, 50),
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        await loadPromotionDetails(6.5244, 3.3792);
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const { latitude, longitude } = location.coords;
+      setUserLat(latitude);
+      setUserLng(longitude);
+      await loadPromotionDetails(latitude, longitude);
+    } catch (error) {
+      await loadPromotionDetails(6.5244, 3.3792);
+    }
+  };
+
+  const loadPromotionDetails = async (lat: number, lng: number) => {
+    try {
+      const [promotionsData, myRedemptions] = await Promise.all([
+        apiService.getNearbyPromotions(lat, lng, 50),
         apiService.getMyRedemptions()
       ]);
 
-      const found = promotionsData.find((p: any) => p.id === promotionId);
+      const found = promotionsData.find((p: any) => p.id === id);
       setPromotion(found);
 
-      // Check if user has already generated QR for this promotion
-      const hasGenerated = redemptionsData.some(
-        (r: any) => r.promotion?.id === promotionId && !r.isRedeemed
+      const hasGenerated = myRedemptions.some(
+        (r: any) => r.promotion?.id === id && !r.isRedeemed
       );
       setQrGenerated(hasGenerated);
-
     } catch (error) {
       Alert.alert("Error", "Failed to load promotion details");
     } finally {
@@ -66,10 +94,10 @@ export default function PromotionDetail() {
         quantity: selectedQuantity
       });
 
-      setQrGenerated(true);   // Make it persistent
+      setQrGenerated(true);
 
       Alert.alert(
-        "QR Code Generated", 
+        "✅ QR Code Generated",
         `Quantity: ${selectedQuantity} × ${promotion.title}`,
         [
           { text: "View My Vouchers", onPress: () => router.push('/redemptions') },
@@ -82,7 +110,11 @@ export default function PromotionDetail() {
   };
 
   if (loading) {
-    return <ActivityIndicator size="large" style={{ flex: 1 }} color="#1C8EDA" />;
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#1C8EDA" />
+      </View>
+    );
   }
 
   if (!promotion) {
@@ -95,8 +127,6 @@ export default function PromotionDetail() {
 
   return (
     <ScrollView style={promotionStyles.container} showsVerticalScrollIndicator={false}>
-      
-      {/* Hero Image */}
       {promotion.photoUrl ? (
         <Image 
           source={{ uri: promotion.photoUrl }} 
@@ -123,8 +153,7 @@ export default function PromotionDetail() {
           {promotion.merchant?.businessName}
         </Text>
 
-        {/* Phone + Address - now PERSISTENT */}
-        {(qrGenerated || promotion.merchant?.phoneNumber || promotion.merchant?.address) && (
+        {qrGenerated && (
           <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
             {promotion.merchant?.phoneNumber && (
               <Text style={{ color: '#10B981', fontWeight: '600', marginBottom: 6 }}>
@@ -140,7 +169,7 @@ export default function PromotionDetail() {
         )}
 
         <Text style={promotionStyles.metaText}>
-          {promotion.distanceKm}km away • Expires {new Date(promotion.expiry).toLocaleDateString('en-NG')}
+          {promotion.distanceKm} km away • Expires {new Date(promotion.expiry).toLocaleDateString('en-NG')}
         </Text>
 
         {promotion.description && (

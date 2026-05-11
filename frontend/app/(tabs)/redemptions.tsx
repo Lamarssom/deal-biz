@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ScrollView,
   View,
@@ -6,42 +6,62 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  TouchableOpacity
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../services/api';
 import { redemptionStyles } from '../../styles/redemption.styles';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const FAVOURITES_KEY = '@deal_biz_favourites';
 
 export default function MyRedemptionsScreen() {
   const router = useRouter();
   const { isSignedIn, isLoading: authLoading } = useAuth();
 
   const [redemptions, setRedemptions] = useState<any[]>([]);
+  const [favourites, setFavourites] = useState<string[]>([]);
+  const [promotions, setPromotions] = useState<any[]>([]); // needed for favourite cards
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const loadMyRedemptions = async () => {
     if (!isSignedIn) return;
     try {
       const data = await apiService.getMyRedemptions();
       setRedemptions(data);
-    } catch (error) {
-      console.error('Failed to load vouchers:', error);
+      setError(null);
+    } catch (err) {
+      setError('Could not load your vouchers');
       Alert.alert('Error', 'Could not load your vouchers');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadMyRedemptions();
-  }, [isSignedIn]);
+  const loadFavourites = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(FAVOURITES_KEY);
+      if (stored) setFavourites(JSON.parse(stored));
+    } catch (e) {}
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isSignedIn) {
+        loadMyRedemptions();
+        loadFavourites();
+      }
+    }, [isSignedIn])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadMyRedemptions();
+    await Promise.all([loadMyRedemptions(), loadFavourites()]);
     setRefreshing(false);
   };
 
@@ -65,10 +85,38 @@ export default function MyRedemptionsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={{ padding: 20 }}>
-          <Text style={redemptionStyles.header}>My Vouchers</Text>
+          <Text style={redemptionStyles.header}>My Activity</Text>
           <Text style={redemptionStyles.subHeader}>
-            Show these QR codes to the merchant for redemption
+            Your vouchers, favourites & history
           </Text>
+
+          {/* Favourites Section - clickable cards */}
+          <Text style={redemptionStyles.sectionTitle}>Favourites</Text>
+          {favourites.length === 0 ? (
+            <Text style={{ color: '#64748B', textAlign: 'center', padding: 40 }}>
+              No favourited promotions yet{'\n'}Tap the heart on any promotion
+            </Text>
+          ) : (
+            favourites.map((favId) => {
+              const promo = promotions.find(p => p.id === favId) || 
+                           redemptions.find(r => r.promotion?.id === favId)?.promotion;
+              if (!promo) return null;
+              return (
+                <TouchableOpacity 
+                  key={favId} 
+                  style={redemptionStyles.card}
+                  onPress={() => router.push({ pathname: '/promotions/[id]', params: { id: promo.id } })}
+                >
+                  <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 4 }}>
+                    {promo.title}
+                  </Text>
+                  <Text style={{ color: '#64748B' }}>
+                    {promo.merchant?.businessName}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })
+          )}
 
           {/* Active Vouchers */}
           <Text style={redemptionStyles.sectionTitle}>Active Vouchers</Text>
@@ -86,7 +134,6 @@ export default function MyRedemptionsScreen() {
                   {redemption.promotion?.merchant?.businessName}
                 </Text>
 
-                {/* Phone + Address - permanently shown for active vouchers */}
                 <View style={{ marginBottom: 16 }}>
                   {redemption.promotion?.merchant?.phoneNumber && (
                     <Text style={{ color: '#10B981', fontWeight: '600', marginBottom: 4 }}>
@@ -118,16 +165,16 @@ export default function MyRedemptionsScreen() {
             ))
           )}
 
-          {/* Redeemed Vouchers */}
+          {/* Past Redemptions */}
           {redeemedVouchers.length > 0 && (
             <>
-              <Text style={redemptionStyles.sectionTitle}>Redeemed Vouchers</Text>
+              <Text style={redemptionStyles.sectionTitle}>Past Redemptions</Text>
               {redeemedVouchers.map((redemption) => (
                 <View key={redemption.id} style={[redemptionStyles.historyCard, { opacity: 0.85 }]}>
                   <Text style={{ fontSize: 16, fontWeight: '600' }}>
                     {redemption.promotion?.title}
                   </Text>
-                  <Text style={{ color: '#10B981', marginTop: 4 }}>✅ Already Redeemed</Text>
+                  <Text style={{ color: '#10B981', marginTop: 4 }}>Redeemed</Text>
                   <Text style={{ color: '#64748B', fontSize: 13, marginTop: 4 }}>
                     Scanned on {new Date(redemption.redeemedAt).toLocaleDateString('en-NG')}
                   </Text>

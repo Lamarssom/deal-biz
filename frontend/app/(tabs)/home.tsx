@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   ScrollView, 
   View, 
@@ -8,25 +8,36 @@ import {
   Alert,
   ActivityIndicator,
   Image,
-  RefreshControl
+  RefreshControl,
+  Platform
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { homeStyles } from '../../styles/home.styles';
 import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+const FAVOURITES_KEY = '@deal_biz_favourites';
+
 export default function HomeScreen() {
   const router = useRouter();
-  const { user, logout, isSignedIn, isLoading } = useAuth();
+  const { user, logout, isSignedIn, isLoading: authLoading } = useAuth();
 
   const [promotions, setPromotions] = useState<any[]>([]);
+  const [filteredPromotions, setFilteredPromotions] = useState<any[]>([]);
+  const [favourites, setFavourites] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [locationLoading, setLocationLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [lastLat, setLastLat] = useState<number>(6.5244);
+  const [lastLng, setLastLng] = useState<number>(3.3792);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -35,29 +46,55 @@ export default function HomeScreen() {
     return 'Good evening';
   };
 
-  useEffect(() => {
-    if (isLoading) return;
-    if (!isSignedIn || !user) {
-      router.replace('/login');
-    } else {
-      getUserLocation();
-    }
-  }, [isLoading, isSignedIn, user]);
+  const loadFavourites = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(FAVOURITES_KEY);
+      if (stored) setFavourites(JSON.parse(stored));
+    } catch (e) {}
+  };
+
+  const toggleFavourite = async (promotionId: string) => {
+    const isFav = favourites.includes(promotionId);
+    const newFavs = isFav 
+      ? favourites.filter(id => id !== promotionId)
+      : [...favourites, promotionId];
+    
+    await AsyncStorage.setItem(FAVOURITES_KEY, JSON.stringify(newFavs));
+    setFavourites(newFavs);
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isSignedIn && user) {
+        loadFavourites();
+        getUserLocation();
+      }
+    }, [isSignedIn, user])
+  );
 
   const getUserLocation = async () => {
+    if (Platform.OS === 'web') {
+      await loadPromotions(lastLat, lastLng);
+      return;
+    }
+
     setLocationLoading(true);
+    setError(null);
+
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert("Permission Denied", "Using default Lagos location");
-        await loadPromotions(6.5244, 3.3792);
+        await loadPromotions(lastLat, lastLng);
         return;
       }
+
       const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      await loadPromotions(location.coords.latitude, location.coords.longitude);
-    } catch (error) {
-      console.log("Location error:", error);
-      await loadPromotions(6.5244, 3.3792);
+      const { latitude, longitude } = location.coords;
+      setLastLat(latitude);
+      setLastLng(longitude);
+      await loadPromotions(latitude, longitude);
+    } catch (err) {
+      await loadPromotions(lastLat, lastLng);
     } finally {
       setLocationLoading(false);
     }
@@ -65,25 +102,35 @@ export default function HomeScreen() {
 
   const loadPromotions = async (lat: number, lng: number) => {
     try {
-      console.log(`📍 Fetching promotions near: ${lat}, ${lng}`);
       const data = await apiService.getNearbyPromotions(lat, lng, 30);
-      console.log(`✅ Received ${data.length} promotions`);
-
-      if (data.length > 0) {
-        console.log("🔍 FULL PROMOTION OBJECT:", JSON.stringify(data[0], null, 2));
-      }
-
       setPromotions(data);
+      setFilteredPromotions(data);
+      setError(null);
     } catch (error) {
-      console.error('Failed to load promotions:', error);
+      setError("Couldn't load promotions. Pull down to retry.");
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredPromotions(promotions);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    const filtered = promotions.filter((promo: any) =>
+      promo.title?.toLowerCase().includes(query) ||
+      promo.merchant?.businessName?.toLowerCase().includes(query) ||
+      promo.description?.toLowerCase().includes(query)
+    );
+    setFilteredPromotions(filtered);
+  }, [searchQuery, promotions]);
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadPromotions(6.5244, 3.3792);
+    await loadPromotions(lastLat, lastLng);
     setRefreshing(false);
   };
 
@@ -93,15 +140,12 @@ export default function HomeScreen() {
     router.push({ pathname: '/promotions/[id]', params: { id: promotionId } });
   };
 
-  // Safe image check (prevents local file:// errors)
-  const getImageSource = (photoUrl: string | undefined) => {
-    if (!photoUrl || photoUrl.startsWith('file://')) {
-      return null; // will show placeholder
-    }
-    return { uri: photoUrl };
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/login');
   };
 
-  if (isLoading) {
+  if (authLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#1C8EDA" />
@@ -119,9 +163,7 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={homeStyles.header}>
           <View>
-            <Text style={homeStyles.greeting}>
-              {getGreeting()},
-            </Text>
+            <Text style={homeStyles.greeting}>{getGreeting()},</Text>
             <Text style={homeStyles.title}>Chief 👋</Text>
           </View>
 
@@ -137,7 +179,7 @@ export default function HomeScreen() {
 
             <TouchableOpacity 
               style={[homeStyles.logoutButton, { backgroundColor: '#F87171' }]} 
-              onPress={logout}
+              onPress={handleLogout}
             >
               <Text style={[homeStyles.logoutText, { color: '#FFFFFF' }]}>Logout</Text>
             </TouchableOpacity>
@@ -149,8 +191,11 @@ export default function HomeScreen() {
           <Feather name="search" size={22} color="#64748B" />
           <TextInput
             style={homeStyles.searchInput}
-            placeholder="Search deals, merchants..."
+            placeholder="Search deals or merchants..."
             placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            clearButtonMode="while-editing"
           />
         </View>
 
@@ -160,21 +205,31 @@ export default function HomeScreen() {
           {locationLoading && <ActivityIndicator color="#1C8EDA" />}
         </View>
 
-        {loading ? (
-          <Text style={{ padding: 20, textAlign: 'center' }}>Finding best deals near you...</Text>
-        ) : promotions.length === 0 ? (
-          <Text style={{ padding: 20, textAlign: 'center', color: '#64748B' }}>
-            No active promotions nearby right now
-          </Text>
-        ) : (
-          promotions.map((promo: any) => (
+        {loading && (
+          <View style={{ padding: 40, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#1C8EDA" />
+            <Text style={{ marginTop: 12, color: '#64748B' }}>Finding the best deals near you...</Text>
+          </View>
+        )}
+
+        {!loading && filteredPromotions.length === 0 && (
+          <View style={{ padding: 40, alignItems: 'center' }}>
+            <Text style={{ fontSize: 48, marginBottom: 12 }}></Text>
+            <Text style={{ fontSize: 18, fontWeight: '600', color: '#0F172A' }}>No matching promotions</Text>
+          </View>
+        )}
+
+        {/* Promotions List */}
+        {filteredPromotions.map((promo: any) => {
+          const isFavourite = favourites.includes(promo.id);
+          return (
             <TouchableOpacity 
               key={promo.id} 
               style={homeStyles.card}
               onPress={() => handlePromotionPress(promo.id)}
               activeOpacity={0.8}
             >
-              {/* SAFE IMAGE RENDERING */}
+              {/* Image */}
               {promo.photoUrl && !promo.photoUrl.startsWith('file://') ? (
                 <Image 
                   source={{ uri: promo.photoUrl }} 
@@ -182,24 +237,30 @@ export default function HomeScreen() {
                   resizeMode="cover"
                 />
               ) : (
-                <View style={{ 
-                  height: 160, 
-                  backgroundColor: '#E2E8F0', 
-                  borderRadius: 16, 
-                  marginBottom: 12,
-                  justifyContent: 'center', 
-                  alignItems: 'center' 
-                }}>
+                <View style={{ height: 160, backgroundColor: '#E2E8F0', borderRadius: 16, marginBottom: 12, justifyContent: 'center', alignItems: 'center' }}>
                   <Text style={{ color: '#64748B', fontWeight: '500' }}>📸 No image</Text>
                 </View>
               )}
 
-              <Text style={{ fontSize: 18, fontWeight: '600', color: '#0F172A' }}>
-                {promo.title}
-              </Text>
-              
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Text style={{ fontSize: 18, fontWeight: '600', color: '#0F172A', flex: 1 }}>
+                  {promo.title}
+                </Text>
+
+                <TouchableOpacity 
+                  onPress={(e) => { 
+                    e.stopPropagation(); 
+                    toggleFavourite(promo.id); 
+                  }}
+                >
+                  <Text style={{ fontSize: 26 }}>
+                    {isFavourite ? '❤️' : '♡'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
               <Text style={{ color: '#64748B', marginTop: 4 }}>
-                {promo.merchant?.businessName} • {promo.distanceKm}km away
+                {promo.merchant?.businessName} • {promo.distanceKm} km away
               </Text>
 
               <View style={{ flexDirection: 'row', marginTop: 8, gap: 8 }}>
@@ -215,10 +276,10 @@ export default function HomeScreen() {
                 Expires: {new Date(promo.expiry).toLocaleDateString('en-NG')}
               </Text>
             </TouchableOpacity>
-          ))
-        )}
+          );
+        })}
 
-        {/* Categories Section */}
+        {/* Categories */}
         <Text style={[homeStyles.sectionTitle, { marginTop: 20 }]}>Explore Categories</Text>
         
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 12, marginBottom: 40 }}>

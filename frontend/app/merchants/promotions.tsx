@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   ScrollView, 
   View, 
@@ -12,7 +12,7 @@ import {
   Image,
   RefreshControl
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import WebView from 'react-native-webview';
@@ -56,33 +56,20 @@ export default function MerchantPromotionsScreen() {
     photoUrl: "",
   });
 
-  // Auto-refresh analytics when switching to Overview tab
-  useEffect(() => {
-    if (activeTab === 'overview') {
-      loadAnalytics();
-    }
-  }, [activeTab]);
-
-  // Initial load
-  useEffect(() => {
-    loadAnalytics();
-  }, []);
-
-  // Load My Promotions when tab changes
-  useEffect(() => {
-    if (activeTab === 'my') {
-      loadMyPromotions();
-    }
-  }, [activeTab]);
+  // Auto-refresh when returning to screen or switching tabs
+  useFocusEffect(
+    useCallback(() => {
+      if (activeTab === 'overview') loadAnalytics();
+      if (activeTab === 'my') loadMyPromotions();
+    }, [activeTab])
+  );
 
   const loadAnalytics = async () => {
     setAnalyticsLoading(true);
     try {
       const analytics = await apiService.getMerchantAnalytics();
-      const balance = analytics?.outstandingBalance;
-      setOutstandingBalance(typeof balance === 'number' ? balance : 0);
-    } catch (error: any) {
-      console.error('Failed to load analytics:', error);
+      setOutstandingBalance(typeof analytics?.outstandingBalance === 'number' ? analytics.outstandingBalance : 0);
+    } catch {
       setOutstandingBalance(0);
     } finally {
       setAnalyticsLoading(false);
@@ -94,8 +81,7 @@ export default function MerchantPromotionsScreen() {
     try {
       const promotions = await apiService.getMyPromotions();
       setMyPromotions(promotions);
-    } catch (error) {
-      console.error('Failed to load my promotions:', error);
+    } catch {
       Alert.alert('Error', 'Could not load your promotions');
     } finally {
       setMyPromotionsLoading(false);
@@ -110,9 +96,8 @@ export default function MerchantPromotionsScreen() {
       quality: 0.8,
     });
 
-    if (!result.canceled && result.assets && result.assets[0]) {
-      const uri = result.assets[0].uri;
-      setFormData(prev => ({ ...prev, photoUrl: uri }));
+    if (!result.canceled && result.assets?.[0]) {
+      setFormData(prev => ({ ...prev, photoUrl: result.assets[0].uri }));
     }
   };
 
@@ -138,7 +123,6 @@ export default function MerchantPromotionsScreen() {
       let finalPhotoUrl = formData.photoUrl;
 
       if (finalPhotoUrl && finalPhotoUrl.startsWith('file://')) {
-        Alert.alert("Uploading image...", "Please wait");
         finalPhotoUrl = await apiService.uploadImageToCloudinary(finalPhotoUrl);
       }
 
@@ -168,7 +152,7 @@ export default function MerchantPromotionsScreen() {
       await apiService.settleMerchantBalance({ amount });
       Alert.alert('Success', `₦${amount} settlement initiated!`);
       setSettleAmount('50');
-      loadAnalytics(); // Refresh balance immediately
+      loadAnalytics();
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'Failed to settle balance');
     } finally {
@@ -191,7 +175,15 @@ export default function MerchantPromotionsScreen() {
     <ScrollView 
       style={promotionsStyles.container} 
       showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={analyticsLoading} onRefresh={loadAnalytics} />}
+      refreshControl={
+        <RefreshControl 
+          refreshing={analyticsLoading || myPromotionsLoading} 
+          onRefresh={() => {
+            if (activeTab === 'overview') loadAnalytics();
+            if (activeTab === 'my') loadMyPromotions();
+          }} 
+        />
+      }
     >
       <View style={promotionsStyles.header}>
         <Text style={promotionsStyles.title}>Merchant Dashboard</Text>
@@ -227,7 +219,7 @@ export default function MerchantPromotionsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* OVERVIEW TAB - Balance now refreshes properly */}
+      {/* OVERVIEW TAB */}
       {activeTab === 'overview' && (
         <>
           <View style={promotionsStyles.card}>
@@ -265,7 +257,6 @@ export default function MerchantPromotionsScreen() {
         <View style={promotionsStyles.card}>
           <Text style={{ fontSize: 20, fontWeight: '700', marginBottom: 20 }}>Create New Promotion</Text>
 
-          {/* Image Picker */}
           <TouchableOpacity 
             onPress={pickImage}
             style={{

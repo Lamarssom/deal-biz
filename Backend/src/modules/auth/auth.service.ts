@@ -80,6 +80,8 @@ export class AuthService {
       businessLGA: dto.businessLGA,
       phoneNumber: dto.phoneNumber,
       address: dto.address,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
       verificationCode: code,
       verificationExpiresAt: new Date(Date.now() + 15 * 60 * 1000),
     });

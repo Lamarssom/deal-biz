@@ -15,6 +15,7 @@ import { signupStyles } from '../styles/signup.styles';
 import { apiService, State as StateType, LGA } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || '';
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const categories = [
@@ -38,7 +39,6 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [address, setAddress] = useState('');
 
   // Merchant fields
   const [businessName, setBusinessName] = useState('');
@@ -46,6 +46,12 @@ export default function SignupScreen() {
   const [state, setState] = useState('');
   const [lga, setLga] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [address, setAddress] = useState('');
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Location data
   const [states, setStates] = useState<StateType[]>([]);
@@ -56,14 +62,12 @@ export default function SignupScreen() {
 
   const [submitted, setSubmitted] = useState(false);
 
-  // Initialize API and fetch states when merchant role is selected
   useEffect(() => {
     if (role === 'merchant' && states.length === 0) {
       fetchStates();
     }
   }, [role]);
 
-  // Fetch LGAs when state changes
   useEffect(() => {
     if (state && role === 'merchant') {
       fetchLGAs(state);
@@ -80,7 +84,6 @@ export default function SignupScreen() {
       setStates(data);
     } catch (error) {
       Alert.alert('Error', 'Failed to load states. Please try again.');
-      console.log('Error fetching states:', error);
     } finally {
       setIsLoadingStates(false);
     }
@@ -93,10 +96,43 @@ export default function SignupScreen() {
       setLgas(data);
     } catch (error) {
       Alert.alert('Error', 'Failed to load LGAs. Please try again.');
-      console.log('Error fetching LGAs:', error);
     } finally {
       setIsLoadingLgas(false);
     }
+  };
+
+  // Mapbox Address Autocomplete
+  const searchAddress = async (text: string) => {
+    setAddress(text);
+    if (text.length < 3) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(text)}.json?` +
+        `access_token=${MAPBOX_TOKEN}&` +
+        `country=NG&` +
+        `types=address,place,locality&` +
+        `proximity=3.3792,6.5244&` +    
+        `limit=8`
+      );
+      const data = await res.json();
+      setSuggestions(data.features || []);
+      setShowSuggestions(true);
+    } catch (e) {
+      console.log('Mapbox search error', e);
+    }
+  };
+
+  const selectSuggestion = (feature: any) => {
+    setAddress(feature.place_name);
+    setLatitude(feature.center[1]);
+    setLongitude(feature.center[0]);
+    setSuggestions([]);
+    setShowSuggestions(false);
   };
 
   const handleSignup = async () => {
@@ -123,24 +159,22 @@ export default function SignupScreen() {
           businessName,
           category,
           businessLGA: lga,
-          phoneNumber,
-          address,
+          phoneNumber: phoneNumber || undefined,
+          address: address || undefined,
+          latitude: latitude || undefined,
+          longitude: longitude || undefined,
         }),
       };
 
       const response = await register(payload);
 
       if (response?.user) {
-        // Customer registration - immediate success
         Alert.alert("Success", "Account created successfully!", [
           { text: "Continue", onPress: () => router.replace('/home') }
         ]);
       } else if (response?.message) {
-        // Merchant registration - requires email verification
         router.push(`/verify-email?email=${encodeURIComponent(email)}`);
         Alert.alert("Check Your Email", response.message);
-      } else {
-        Alert.alert("Success", "Account created successfully.");
       }
     } catch (error: any) {
       const errorMessage = error?.message || 'Registration failed. Please try again.';
@@ -239,22 +273,45 @@ export default function SignupScreen() {
                   />
                 </View>
               </View>
-
               <View style={signupStyles.inputGroup}>
                 <Text style={signupStyles.label}>Business Address</Text>
                 <View style={signupStyles.inputWrapper}>
                   <Feather name="map-pin" size={20} color="#64748B" />
                   <TextInput
                     value={address}
-                    onChangeText={setAddress}
-                    placeholder="Full street address"
+                    onChangeText={searchAddress}
+                    placeholder="Start typing your address..."
                     style={signupStyles.input}
                     placeholderTextColor="#94A3B8"
-                    multiline
                   />
                 </View>
-              </View>
 
+                {/* Suggestions Dropdown */}
+                {showSuggestions && suggestions.length > 0 && (
+                  <View style={{ 
+                    backgroundColor: '#fff', 
+                    borderRadius: 12, 
+                    marginTop: 4, 
+                    maxHeight: 220, 
+                    borderWidth: 1,
+                    borderColor: '#E2E8F0',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    elevation: 3
+                  }}>
+                    {suggestions.map((item, index) => (
+                      <TouchableOpacity 
+                        key={index}
+                        style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}
+                        onPress={() => selectSuggestion(item)}
+                      >
+                        <Text style={{ fontSize: 15 }}>{item.place_name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
               <View style={signupStyles.inputGroup}>
                 <Dropdown
                   label="Business Category"
