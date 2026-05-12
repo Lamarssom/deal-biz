@@ -383,6 +383,34 @@ class ApiService {
     if (data.secure_url) return data.secure_url;
     throw new Error('Failed to upload image');
   }
+
+  
+  async getMyFavourites(): Promise<any[]> {
+    return await this.request<any[]>(
+      '/favourites',
+      'GET',
+      undefined,
+      true
+    );
+  }
+
+  async addFavourite(promotionId: string): Promise<any> {
+    return await this.request<any>(
+      `/favourites/${promotionId}`,
+      'POST',
+      undefined,
+      true
+    );
+  }
+
+  async removeFavourite(promotionId: string): Promise<any> {
+    return await this.request<any>(
+      `/favourites/${promotionId}`,
+      'DELETE',
+      undefined,
+      true
+    );
+  }
 }
 
 export const apiService = new ApiService();

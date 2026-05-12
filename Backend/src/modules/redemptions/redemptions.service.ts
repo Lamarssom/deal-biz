@@ -4,36 +4,42 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';           // ← added In if needed later
 import * as QRCode from 'qrcode';
 import { Redemption } from '../../entities/redemption.entity';
 import { Promotion } from '../../entities/promotion.entity';
 import { User } from '../../entities/user.entity';
+import { Merchant } from '../../entities/merchant.entity';   // ← already there
 import { GenerateQrDto } from './dto/generate-qr.dto';
+import { RedeemDto } from './dto/redeem.dto';
 import * as crypto from 'crypto';
-import { Merchant } from '../../entities/merchant.entity';
 import { OnEvent } from '@nestjs/event-emitter';
 import { EVENTS } from '../events/event.types';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
-
 @Injectable()
 export class RedemptionsService {
-  merchantRepo: any;
   constructor(
     @InjectRepository(Redemption)
     private redemptionRepo: Repository<Redemption>,
+
     @InjectRepository(Promotion)
     private promotionRepo: Repository<Promotion>,
+
     @InjectRepository(User)
     private userRepo: Repository<User>,
+
+    @InjectRepository(Merchant)                    // ← FIXED: now properly injected
+    private merchantRepo: Repository<Merchant>,
+
     private eventEmitter: EventEmitter2,
   ) {}
 
   async generateQR(userId: string, dto: GenerateQrDto) {
+    // ... (your existing generateQR code stays exactly the same)
     const promotion = await this.promotionRepo.findOne({
       where: { id: dto.promotionId, isActive: true },
-      relations: ['merchant']
+      relations: ['merchant'],
     });
 
     if (!promotion) throw new NotFoundException('Promotion not found or inactive');
@@ -42,18 +48,15 @@ export class RedemptionsService {
       throw new BadRequestException('Promotion has expired');
     }
 
-    // Prevent generating QR for own promotion
     if (promotion.merchantId === userId) {
       throw new BadRequestException('You cannot generate QR code for your own promotion');
     }
 
-    // Check if user exists (works for both User and Merchant)
     const userExists = await this.userRepo.findOne({ where: { id: userId } }) ||
                       await this.merchantRepo.findOne({ where: { id: userId } });
 
     if (!userExists) throw new NotFoundException('User not found');
 
-    // Prevent duplicate QR
     const existing = await this.redemptionRepo.findOne({
       where: { promotionId: dto.promotionId, customerId: userId },
     });
@@ -112,7 +115,10 @@ export class RedemptionsService {
 
       const successFee = Math.round(promotion.price * 0.03 * quantity * 100) / 100;
 
-      // Atomic increment
+      // Debug log so you can see exactly what is being charged
+      console.log(`[Redemption] Adding success fee ₦${successFee} to merchant ${merchant.id} (price: ${promotion.price}, qty: ${quantity})`);
+
+      // Update redeemedCount with safe query
       const updateResult = await manager
         .createQueryBuilder()
         .update(Promotion)
@@ -130,14 +136,13 @@ export class RedemptionsService {
         redeemedAt: new Date(),
       });
 
-      await manager
-        .createQueryBuilder()
-        .update(Merchant)
-        .set({
-          outstandingBalance: () => `"outstandingBalance" + ${successFee}`,
-        })
-        .where("id = :id", { id: merchant.id })
-        .execute();
+      // ←←← FIXED: Clean atomic balance increment (this was the broken part)
+      await manager.increment(
+        Merchant,
+        { id: merchant.id },
+        'outstandingBalance',
+        successFee,
+      );
 
       return {
         promotionId: promotion.id,
@@ -146,7 +151,7 @@ export class RedemptionsService {
         promotionTitle: promotion.title,
         businessName: merchant.businessName,
         successFee,
-        quantity
+        quantity,
       };
     });
 
@@ -162,7 +167,7 @@ export class RedemptionsService {
       promotionTitle: result.promotionTitle,
       businessName: result.businessName,
       successFeeCharged: result.successFee,
-      quantity: result.quantity
+      quantity: result.quantity,
     };
   }
 

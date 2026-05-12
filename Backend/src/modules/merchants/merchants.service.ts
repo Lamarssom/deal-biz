@@ -146,7 +146,11 @@ export class MerchantsService {
       amount: Math.round(amount * 100),
       email: merchant.email,
       reference: `settle-${merchantId}-${Date.now()}`,
-      metadata: { merchantId, type: 'balance_settlement' },
+      metadata: { 
+        merchantId, 
+        type: 'balance_settlement',
+        amount 
+      },
       callback_url: 'http://localhost:3000/payments/callback',
     };
 

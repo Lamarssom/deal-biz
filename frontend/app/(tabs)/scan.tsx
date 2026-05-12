@@ -11,6 +11,8 @@ import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-ca
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../services/api';
+import { useMerchant } from '../../context/MerchantContext';
+
 
 export default function ScanScreen() {
   const router = useRouter();
@@ -19,11 +21,10 @@ export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { refreshAnalytics } = useMerchant();
 
-  // Use ref for instant blocking (faster than state)
   const isProcessingRef = useRef(false);
 
-  // Merchant-only guard
   useEffect(() => {
     if (!isSignedIn || user?.role !== 'MERCHANT') {
       Alert.alert('Access Denied', 'This feature is only for registered merchants.', [
@@ -41,21 +42,30 @@ export default function ScanScreen() {
 
     try {
       const response = await apiService.redeem(result.data);
-      Alert.alert('✅ Redemption Successful!', response.message || 'Promotion redeemed.', [
-        {
-          text: 'Scan Another',
-          onPress: () => {
-            setScanned(false);
-            isProcessingRef.current = false;
+      await refreshAnalytics();
+
+      const analytics = await apiService.getMerchantAnalytics();
+      console.log('🔥 [SCAN] Merchant analytics after redemption:', JSON.stringify(analytics, null, 2));
+
+      Alert.alert(
+        '✅ Redemption Successful!',
+        `Promotion redeemed.\n3% fee (₦${response.successFeeCharged || '405'}) added to balance.`,
+        [
+          {
+            text: 'Scan Another',
+            onPress: () => {
+              setScanned(false);
+              isProcessingRef.current = false;
+            },
           },
-        },
-        {
-          text: 'Back to Home',
-          onPress: () => router.replace('/(tabs)/home'),
-        },
-      ]);
+          {
+            text: 'Back to Dashboard',
+            onPress: () => router.replace('/merchants/promotions'),
+          },
+        ]
+      );
     } catch (error: any) {
-      console.error(error);
+      console.error('Redemption error:', error);
       Alert.alert('Redemption Failed', error.message || 'Invalid or already redeemed QR code.', [
         { text: 'Try Again', onPress: () => {
           setScanned(false);

@@ -20,6 +20,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { LocationModule } from './modules/location/location.module';
 import { DatabaseModule } from './database/database.module';
+import { FavouritesModule } from './modules/favourites/favourites.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { HealthController } from './health/health.controller';
 import { ThrottlerGuard } from '@nestjs/throttler';
@@ -55,6 +56,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
       inject: [ConfigService],
       useFactory: createWinstonConfig,
     }),
+    FavouritesModule,
 
     //Rate Limiting Configuration
     ThrottlerModule.forRoot({

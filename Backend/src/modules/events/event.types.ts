@@ -3,4 +3,5 @@ export const EVENTS = {
   PROMOTION_CREATED: 'promotion.created',
   PROMOTION_REDEEMED: 'promotion.redeemed',
   MERCHANT_PAYOUT: 'merchant.payout',
+  BALANCE_SETTLED: 'balance.settled',
 };

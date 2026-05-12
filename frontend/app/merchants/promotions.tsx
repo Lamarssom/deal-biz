@@ -20,10 +20,12 @@ import WebView from 'react-native-webview';
 import { promotionsStyles } from '../../styles/promotions.styles';
 import { useAuth } from '../../context/AuthContext';
 import { apiService, CreatePromotionPayload } from '../../services/api';
+import { useMerchant } from '../../context/MerchantContext';
 
 export default function MerchantPromotionsScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { analytics, loading: analyticsLoading, refreshAnalytics } = useMerchant();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'create' | 'my'>('overview');
 
@@ -32,10 +34,8 @@ export default function MerchantPromotionsScreen() {
 
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
-  const [outstandingBalance, setOutstandingBalance] = useState<number>(0);
-  const [settleAmount, setSettleAmount] = useState('50');
+  const [settleAmount, setSettleAmount] = useState('100');
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showPaymentWebView, setShowPaymentWebView] = useState(false);
@@ -56,25 +56,13 @@ export default function MerchantPromotionsScreen() {
     photoUrl: "",
   });
 
-  // Auto-refresh when returning to screen or switching tabs
+  // Auto-refresh analytics when returning to screen or switching tabs
   useFocusEffect(
     useCallback(() => {
-      if (activeTab === 'overview') loadAnalytics();
+      if (activeTab === 'overview') refreshAnalytics();
       if (activeTab === 'my') loadMyPromotions();
     }, [activeTab])
   );
-
-  const loadAnalytics = async () => {
-    setAnalyticsLoading(true);
-    try {
-      const analytics = await apiService.getMerchantAnalytics();
-      setOutstandingBalance(typeof analytics?.outstandingBalance === 'number' ? analytics.outstandingBalance : 0);
-    } catch {
-      setOutstandingBalance(0);
-    } finally {
-      setAnalyticsLoading(false);
-    }
-  };
 
   const loadMyPromotions = async () => {
     setMyPromotionsLoading(true);
@@ -149,12 +137,14 @@ export default function MerchantPromotionsScreen() {
 
     setActionLoading(true);
     try {
-      await apiService.settleMerchantBalance({ amount });
-      Alert.alert('Success', `₦${amount} settlement initiated!`);
-      setSettleAmount('50');
-      loadAnalytics();
+      const response = await apiService.settleMerchantBalance({ amount });
+
+      if (response?.authorizationUrl) {
+        setPaymentUrl(response.authorizationUrl);
+        setShowPaymentWebView(true);
+      }
     } catch (error: any) {
-      Alert.alert('Error', error?.message || 'Failed to settle balance');
+      Alert.alert('Error', error?.message || 'Failed to initiate settlement');
     } finally {
       setActionLoading(false);
     }
@@ -164,8 +154,8 @@ export default function MerchantPromotionsScreen() {
     if (navState.url.includes('success') || navState.url.includes('callback')) {
       setTimeout(() => {
         setShowPaymentWebView(false);
-        Alert.alert("Payment Successful!", "Your promotion is now live.");
-        loadAnalytics();
+        Alert.alert("✅ Settlement Successful!", "Your balance has been updated.");
+        refreshAnalytics();           // ← global instant update
         setActiveTab('overview');
       }, 1500);
     }
@@ -179,7 +169,7 @@ export default function MerchantPromotionsScreen() {
         <RefreshControl 
           refreshing={analyticsLoading || myPromotionsLoading} 
           onRefresh={() => {
-            if (activeTab === 'overview') loadAnalytics();
+            if (activeTab === 'overview') refreshAnalytics();
             if (activeTab === 'my') loadMyPromotions();
           }} 
         />
@@ -225,7 +215,9 @@ export default function MerchantPromotionsScreen() {
           <View style={promotionsStyles.card}>
             <Text style={{ fontSize: 18, fontWeight: '700', marginBottom: 8 }}>Outstanding Balance</Text>
             <Text style={{ fontSize: 36, fontWeight: '700', color: '#1C8EDA' }}>
-              ₦{analyticsLoading ? '---' : (typeof outstandingBalance === 'number' ? outstandingBalance.toFixed(2) : '0.00')}
+              ₦{analyticsLoading 
+                ? '---' 
+                : (analytics?.outstandingBalance ?? 0).toFixed(2)}
             </Text>
             <Text style={{ color: '#64748B' }}>Current debt</Text>
           </View>
@@ -278,6 +270,7 @@ export default function MerchantPromotionsScreen() {
             )}
           </TouchableOpacity>
 
+          {/* ... rest of create tab stays exactly the same ... */}
           <Text style={promotionsStyles.label}>Promotion Title *</Text>
           <TextInput
             style={promotionsStyles.input}
@@ -355,7 +348,7 @@ export default function MerchantPromotionsScreen() {
         </View>
       )}
 
-      {/* MY PROMOTIONS TAB */}
+      {/* MY PROMOTIONS TAB - unchanged */}
       {activeTab === 'my' && (
         <View style={{ paddingHorizontal: 20 }}>
           <Text style={{ fontSize: 20, fontWeight: '700', marginBottom: 16 }}>My Promotions</Text>
@@ -399,7 +392,7 @@ export default function MerchantPromotionsScreen() {
         </View>
       )}
 
-      {/* Payment Modal */}
+      {/* Payment Modal - unchanged */}
       <Modal
         visible={showPaymentWebView}
         animationType="slide"

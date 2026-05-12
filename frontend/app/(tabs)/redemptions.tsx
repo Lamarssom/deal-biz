@@ -11,20 +11,17 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import { useAuth } from '../../context/AuthContext';
+import { useFavourites } from '../../context/FavouritesContext';
 import { apiService } from '../../services/api';
 import { redemptionStyles } from '../../styles/redemption.styles';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const FAVOURITES_KEY = '@deal_biz_favourites';
 
 export default function MyRedemptionsScreen() {
   const router = useRouter();
   const { isSignedIn, isLoading: authLoading } = useAuth();
+  const { favourites, loading: favouritesLoading, refreshFavourites } = useFavourites();
 
   const [redemptions, setRedemptions] = useState<any[]>([]);
-  const [favourites, setFavourites] = useState<string[]>([]);
-  const [promotions, setPromotions] = useState<any[]>([]); // needed for favourite cards
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,25 +40,18 @@ export default function MyRedemptionsScreen() {
     }
   };
 
-  const loadFavourites = async () => {
-    try {
-      const stored = await AsyncStorage.getItem(FAVOURITES_KEY);
-      if (stored) setFavourites(JSON.parse(stored));
-    } catch (e) {}
-  };
-
   useFocusEffect(
     useCallback(() => {
       if (isSignedIn) {
         loadMyRedemptions();
-        loadFavourites();
+        refreshFavourites();
       }
     }, [isSignedIn])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([loadMyRedemptions(), loadFavourites()]);
+    await Promise.all([loadMyRedemptions(), refreshFavourites()]);
     setRefreshing(false);
   };
 
@@ -90,20 +80,19 @@ export default function MyRedemptionsScreen() {
             Your vouchers, favourites & history
           </Text>
 
-          {/* Favourites Section - clickable cards */}
+          {/* Favourites Section */}
           <Text style={redemptionStyles.sectionTitle}>Favourites</Text>
           {favourites.length === 0 ? (
             <Text style={{ color: '#64748B', textAlign: 'center', padding: 40 }}>
               No favourited promotions yet{'\n'}Tap the heart on any promotion
             </Text>
           ) : (
-            favourites.map((favId) => {
-              const promo = promotions.find(p => p.id === favId) || 
-                           redemptions.find(r => r.promotion?.id === favId)?.promotion;
+            favourites.map((fav) => {
+              const promo = fav.promotion;
               if (!promo) return null;
               return (
                 <TouchableOpacity 
-                  key={favId} 
+                  key={fav.promotionId} 
                   style={redemptionStyles.card}
                   onPress={() => router.push({ pathname: '/promotions/[id]', params: { id: promo.id } })}
                 >

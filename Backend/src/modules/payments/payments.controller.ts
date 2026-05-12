@@ -44,20 +44,15 @@ export class PaymentsController {
       return { status: 'no signature' };
     }
 
-    // Use raw body if available (better for signature), otherwise fallback to JSON.stringify
-    const payload = req.rawBody
-      ? req.rawBody.toString('utf8')
-      : JSON.stringify(body);
+    const payload = req.rawBody ? req.rawBody.toString('utf8') : JSON.stringify(body);
 
-    // ✅ Verify signature exactly as Paystack does
     const hash = crypto
       .createHmac('sha512', secret)
       .update(payload)
       .digest('hex');
 
     if (hash !== signature) {
-      console.error('Invalid Paystack signature. Received:', signature);
-      console.error('Expected hash:', hash);
+      console.error('Invalid Paystack signature');
       return { status: 'invalid signature' };
     }
 
@@ -68,16 +63,22 @@ export class PaymentsController {
 
       if (metadata?.promotionId && metadata?.type === 'creation_fee') {
         const promotionId = metadata.promotionId;
-        console.log(
-          `Processing successful payment for promotion: ${promotionId}`,
-        );
-
+        console.log(`Processing successful payment for promotion: ${promotionId}`);
         await this.paymentsService.handleSuccessfulPayment(promotionId);
 
-      } else {
-        console.log(
-          'Webhook received but no matching metadata for promotion creation',
-        );
+      } 
+      else if (metadata?.type === 'balance_settlement' && metadata?.merchantId) {
+        const merchantId = metadata.merchantId;
+        const amount = body.data?.amount / 100;
+
+        console.log(`Processing balance settlement for merchant ${merchantId}, amount: ₦${amount}`);
+
+        await this.merchantsService.updateBalance(merchantId, amount);
+
+        this.eventEmitter.emit(EVENTS.BALANCE_SETTLED, { merchantId, amount });
+      } 
+      else {
+        console.log('Webhook received but no matching metadata');
       }
     }
 

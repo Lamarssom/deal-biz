@@ -14,22 +14,20 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { homeStyles } from '../../styles/home.styles';
 import { useAuth } from '../../context/AuthContext';
+import { useFavourites } from '../../context/FavouritesContext';
 import { apiService } from '../../services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const FAVOURITES_KEY = '@deal_biz_favourites';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user, logout, isSignedIn, isLoading: authLoading } = useAuth();
+  const { isFavourite, toggleFavourite, refreshFavourites } = useFavourites();
 
   const [promotions, setPromotions] = useState<any[]>([]);
   const [filteredPromotions, setFilteredPromotions] = useState<any[]>([]);
-  const [favourites, setFavourites] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [locationLoading, setLocationLoading] = useState(false);
@@ -46,30 +44,13 @@ export default function HomeScreen() {
     return 'Good evening';
   };
 
-  const loadFavourites = async () => {
-    try {
-      const stored = await AsyncStorage.getItem(FAVOURITES_KEY);
-      if (stored) setFavourites(JSON.parse(stored));
-    } catch (e) {}
-  };
-
-  const toggleFavourite = async (promotionId: string) => {
-    const isFav = favourites.includes(promotionId);
-    const newFavs = isFav 
-      ? favourites.filter(id => id !== promotionId)
-      : [...favourites, promotionId];
-    
-    await AsyncStorage.setItem(FAVOURITES_KEY, JSON.stringify(newFavs));
-    setFavourites(newFavs);
-  };
-
   useFocusEffect(
     useCallback(() => {
       if (isSignedIn && user) {
-        loadFavourites();
         getUserLocation();
+        refreshFavourites();
       }
-    }, [isSignedIn, user])
+    }, [isSignedIn, user, refreshFavourites])
   );
 
   const getUserLocation = async () => {
@@ -214,14 +195,13 @@ export default function HomeScreen() {
 
         {!loading && filteredPromotions.length === 0 && (
           <View style={{ padding: 40, alignItems: 'center' }}>
-            <Text style={{ fontSize: 48, marginBottom: 12 }}></Text>
             <Text style={{ fontSize: 18, fontWeight: '600', color: '#0F172A' }}>No matching promotions</Text>
           </View>
         )}
 
         {/* Promotions List */}
         {filteredPromotions.map((promo: any) => {
-          const isFavourite = favourites.includes(promo.id);
+          const favourited = isFavourite(promo.id);
           return (
             <TouchableOpacity 
               key={promo.id} 
@@ -254,7 +234,7 @@ export default function HomeScreen() {
                   }}
                 >
                   <Text style={{ fontSize: 26 }}>
-                    {isFavourite ? '❤️' : '♡'}
+                    {favourited ? '❤️' : '♡'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -299,4 +279,8 @@ export default function HomeScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+function refreshFavourites() {
+  throw new Error('Function not implemented.');
 }
