@@ -4,7 +4,6 @@ import {
   View, 
   Text, 
   TouchableOpacity, 
-  TextInput, 
   ActivityIndicator,
   Image,
   RefreshControl,
@@ -13,7 +12,6 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import Toast from 'react-native-toast-message';
 
 import { homeStyles } from '../../styles/home.styles';
 import { useAuth } from '../../context/AuthContext';
@@ -29,7 +27,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user, logout, isSignedIn, isLoading: authLoading } = useAuth();
+  const { user, isSignedIn, isLoading: authLoading } = useAuth();
   const { isFavourite, toggleFavourite, refreshFavourites } = useFavourites();
   const { isConnected } = useNetwork();
 
@@ -51,10 +49,7 @@ export default function HomeScreen() {
     return 'Good evening';
   };
 
-  const retryLoad = () => {
-    setError(null);
-    getUserLocation();
-  };
+  const openScan = () => router.push('/scan');
 
   useFocusEffect(
     useCallback(() => {
@@ -132,11 +127,6 @@ export default function HomeScreen() {
     router.push({ pathname: '/promotions/[id]', params: { id: promotionId } });
   };
 
-  const handleLogout = async () => {
-    await logout();
-    router.replace('/login');
-  };
-
   if (authLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -152,43 +142,54 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Header */}
+        {/* Modern Header with perfectly aligned buttons */}
         <View style={homeStyles.header}>
           <View>
             <Text style={homeStyles.greeting}>{getGreeting()},</Text>
             <Text style={homeStyles.title}>Chief 👋</Text>
           </View>
 
-          <View style={homeStyles.headerButtons}>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {/* Run Promo */}
             {user?.role === 'MERCHANT' && (
               <TouchableOpacity 
-                style={[homeStyles.logoutButton, { backgroundColor: '#1C8EDA' }]} 
+                style={{
+                  backgroundColor: '#1C8EDA',
+                  height: 48,
+                  paddingHorizontal: 20,
+                  borderRadius: 999,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }} 
                 onPress={goToPromotions}
               >
-                <Text style={[homeStyles.logoutText, { color: '#FFFFFF' }]}>Run Promo</Text>
+                <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 15 }}>
+                  Run Promo
+                </Text>
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity 
-              style={[homeStyles.logoutButton, { backgroundColor: '#F87171' }]} 
-              onPress={handleLogout}
-            >
-              <Text style={[homeStyles.logoutText, { color: '#FFFFFF' }]}>Logout</Text>
-            </TouchableOpacity>
+            {/* Modern Scan QR - lighter black, perfect alignment */}
+            {user?.role === 'MERCHANT' && (
+              <TouchableOpacity 
+                style={{
+                  backgroundColor: '#1F2937',
+                  height: 48,
+                  paddingHorizontal: 20,
+                  borderRadius: 999,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                }} 
+                onPress={openScan}
+              >
+                <Feather name="camera" size={20} color="#FFFFFF" />
+                <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 15 }}>Scan QR</Text>
+              </TouchableOpacity>
+            )}
           </View>
-        </View>
-
-        {/* Search Bar */}
-        <View style={homeStyles.searchContainer}>
-          <Feather name="search" size={22} color="#64748B" />
-          <TextInput
-            style={homeStyles.searchInput}
-            placeholder="Search deals or merchants..."
-            placeholderTextColor="#94A3B8"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            clearButtonMode="while-editing"
-          />
         </View>
 
         {/* Nearby Promotions Header */}
@@ -197,13 +198,9 @@ export default function HomeScreen() {
           {locationLoading && <ActivityIndicator color="#1C8EDA" />}
         </View>
 
-        {/* Loading */}
+        {/* Loading / Error / Empty / List */}
         {loading && <LoadingSkeleton />}
-
-        {/* Error */}
-        {error && !loading && <ErrorState message={error} onRetry={retryLoad} />}
-
-        {/* Empty */}
+        {error && !loading && <ErrorState message={error} onRetry={() => getUserLocation()} />}
         {!loading && !error && filteredPromotions.length === 0 && (
           <EmptyState 
             icon="search" 
@@ -212,7 +209,6 @@ export default function HomeScreen() {
           />
         )}
 
-        {/* List */}
         {!loading && !error && filteredPromotions.length > 0 && filteredPromotions.map((promo: any) => {
           const favourited = isFavourite(promo.id);
           return (
@@ -266,24 +262,6 @@ export default function HomeScreen() {
             </TouchableOpacity>
           );
         })}
-
-        {/* Categories */}
-        <Text style={[homeStyles.sectionTitle, { marginTop: 20 }]}>Explore Categories</Text>
-        
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 12, marginBottom: 40 }}>
-          {['Food', 'Fashion', 'Groceries', 'Health', 'Electronics'].map((cat) => (
-            <TouchableOpacity key={cat} style={{
-              backgroundColor: '#FFFFFF',
-              paddingHorizontal: 20,
-              paddingVertical: 14,
-              borderRadius: 999,
-              borderWidth: 1,
-              borderColor: '#E2E8F0'
-            }}>
-              <Text style={{ color: '#0F172A', fontWeight: '500' }}>{cat}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
       </ScrollView>
     </SafeAreaView>
   );

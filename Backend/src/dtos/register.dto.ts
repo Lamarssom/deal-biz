@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsEnum, MinLength, IsOptional, IsString, IsNumber, IsLatitude, IsLongitude } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsEnum, MinLength, IsOptional, IsString, IsNumber, IsLatitude, IsLongitude, Matches, IsPhoneNumber } from 'class-validator';
 import type { Role } from '../entities/user.entity';
 
 export class RegisterDto {
@@ -10,12 +10,18 @@ export class RegisterDto {
   @MinLength(6)
   password!: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
-  name?: string;
+  name!: string;
 
   @IsEnum(['CUSTOMER', 'MERCHANT'])
   role!: Role;
+
+  // Phone number is now available for BOTH roles
+  @IsOptional()
+  @IsString()
+  @IsPhoneNumber('NG')           // Validates Nigerian phone format
+  phoneNumber?: string;
 
   // Merchant-specific fields
   @IsOptional()
@@ -29,10 +35,6 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   businessLGA?: string;
-
-  @IsOptional()
-  @IsString()
-  phoneNumber?: string;
 
   @IsOptional()
   @IsString()

@@ -187,7 +187,7 @@ export default function MerchantPromotionsScreen() {
       }
     >
       <View style={promotionsStyles.header}>
-        <Text style={promotionsStyles.title}>Merchant Dashboard</Text>
+        <Text style={promotionsStyles.title}>Dashboard</Text>
         <Text style={promotionsStyles.subtitle}>Manage promotions & account</Text>
       </View>
 

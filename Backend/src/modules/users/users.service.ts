@@ -21,10 +21,18 @@ export class UsersService {
 
   async findOne(email: string) {
     return this.repo.findOne({
-        where: { email },
-        select: ['id', 'email', 'password', 'role']
+      where: { email },
+      select: [
+        'id',
+        'email',
+        'password',
+        'role',
+        'isVerified',
+        'verificationCode',
+        'verificationExpiresAt'
+      ]
     });
-    }
+  }
 
   findById(id: string) {
     return this.repo.findOne({ where: { id } });
@@ -37,5 +45,4 @@ export class UsersService {
   update(criteria: any, data: Partial<User>) {
     return this.repo.update(criteria, data);
   }
-
 }

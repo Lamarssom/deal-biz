@@ -39,13 +39,13 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');   // ← Now visible for both roles
 
   // Merchant fields
   const [businessName, setBusinessName] = useState('');
   const [category, setCategory] = useState('');
   const [state, setState] = useState('');
   const [lga, setLga] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [address, setAddress] = useState('');
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
@@ -53,13 +53,11 @@ export default function SignupScreen() {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // Location data
   const [states, setStates] = useState<StateType[]>([]);
   const [lgas, setLgas] = useState<LGA[]>([]);
   const [isLoadingStates, setIsLoadingStates] = useState(false);
   const [isLoadingLgas, setIsLoadingLgas] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
@@ -143,18 +141,20 @@ export default function SignupScreen() {
       return;
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     setIsSubmitting(true);
     try {
       const payload = {
-        email,
+        email: normalizedEmail,
         password,
         name,
         role: role.toUpperCase() as 'MERCHANT' | 'CUSTOMER',
+        phoneNumber: phoneNumber || undefined,        // ← Sent for both roles
         ...(role === 'merchant' && {
           businessName,
           category,
           businessLGA: lga,
-          phoneNumber: phoneNumber || undefined,
           address: address || undefined,
           latitude: latitude || undefined,
           longitude: longitude || undefined,
@@ -167,7 +167,7 @@ export default function SignupScreen() {
         Toast.show({ type: 'success', text1: 'Account created successfully!' });
         router.replace('/(tabs)/home');
       } else if (response?.message) {
-        router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+        router.push(`/verify-otp?email=${encodeURIComponent(normalizedEmail)}`);
         Toast.show({ type: 'success', text1: 'Check Your Email', text2: response.message });
       }
     } catch (error: any) {
@@ -195,6 +195,7 @@ export default function SignupScreen() {
 
         <View style={signupStyles.formCard}>
           
+          {/* Role Selection - Always visible first */}
           <Text style={signupStyles.label}>I want to sign up as</Text>
           <View style={signupStyles.roleContainer}>
             <TouchableOpacity 
@@ -214,39 +215,25 @@ export default function SignupScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Common Fields */}
-          <View style={signupStyles.inputGroup}>
-            <Text style={signupStyles.label}>Full Name</Text>
-            <View style={signupStyles.inputWrapper}>
-              <Feather name="user" size={20} color="#64748B" />
-              <TextInput
-                value={name}
-                onChangeText={setName}
-                placeholder="Your full name"
-                style={signupStyles.input}
-                placeholderTextColor="#94A3B8"
-              />
-            </View>
-            {submitted && !name.trim() && <Text style={{color: '#EF4444', fontSize: 12, marginTop: 4}}>Name is required</Text>}
-          </View>
-
-          {/* Merchant Only Fields */}
-          {role === 'merchant' && (
+          {/* Form fields only appear AFTER role is chosen */}
+          {role && (
             <>
+              {/* Common Fields - Visible for both */}
               <View style={signupStyles.inputGroup}>
-                <Text style={signupStyles.label}>Business Name</Text>
+                <Text style={signupStyles.label}>Full Name</Text>
                 <View style={signupStyles.inputWrapper}>
-                  <Feather name="briefcase" size={20} color="#64748B" />
+                  <Feather name="user" size={20} color="#64748B" />
                   <TextInput
-                    value={businessName}
-                    onChangeText={setBusinessName}
-                    placeholder="Business name"
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Your full name"
                     style={signupStyles.input}
                     placeholderTextColor="#94A3B8"
                   />
                 </View>
               </View>
 
+              {/* Phone Number - Now shown for BOTH Customer and Merchant */}
               <View style={signupStyles.inputGroup}>
                 <Text style={signupStyles.label}>Phone Number</Text>
                 <View style={signupStyles.inputWrapper}>
@@ -262,157 +249,169 @@ export default function SignupScreen() {
                 </View>
               </View>
 
+              {/* Merchant Only Fields */}
+              {role === 'merchant' && (
+                <>
+                  <View style={signupStyles.inputGroup}>
+                    <Text style={signupStyles.label}>Business Name</Text>
+                    <View style={signupStyles.inputWrapper}>
+                      <Feather name="briefcase" size={20} color="#64748B" />
+                      <TextInput
+                        value={businessName}
+                        onChangeText={setBusinessName}
+                        placeholder="Business name"
+                        style={signupStyles.input}
+                        placeholderTextColor="#94A3B8"
+                      />
+                    </View>
+                  </View>
+
+                  {/* Address, Category, State, LGA - your existing merchant fields */}
+                  <View style={signupStyles.inputGroup}>
+                    <Text style={signupStyles.label}>Business Address</Text>
+                    <View style={signupStyles.inputWrapper}>
+                      <Feather name="map-pin" size={20} color="#64748B" />
+                      <TextInput
+                        value={address}
+                        onChangeText={searchAddress}
+                        placeholder="Start typing your address..."
+                        style={signupStyles.input}
+                        placeholderTextColor="#94A3B8"
+                      />
+                    </View>
+
+                    {showSuggestions && suggestions.length > 0 && (
+                      <View style={{ 
+                        backgroundColor: '#fff', 
+                        borderRadius: 12, 
+                        marginTop: 4, 
+                        maxHeight: 220, 
+                        borderWidth: 1,
+                        borderColor: '#E2E8F0',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.1,
+                        elevation: 3
+                      }}>
+                        {suggestions.map((item, index) => (
+                          <TouchableOpacity 
+                            key={index}
+                            style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}
+                            onPress={() => selectSuggestion(item)}
+                          >
+                            <Text style={{ fontSize: 15 }}>{item.place_name}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={signupStyles.inputGroup}>
+                    <Dropdown
+                      label="Business Category"
+                      options={categories}
+                      value={category}
+                      onSelect={setCategory}
+                      placeholder="Select category"
+                      icon="tag"
+                    />
+                  </View>
+
+                  <View style={signupStyles.inputGroup}>
+                    <Dropdown
+                      label="State"
+                      options={states.map((s) => ({ id: s.id, label: s.state, value: s.state }))}
+                      value={state}
+                      onSelect={setState}
+                      placeholder="Select state"
+                      icon="map-pin"
+                      isLoading={isLoadingStates}
+                    />
+                  </View>
+
+                  <View style={signupStyles.inputGroup}>
+                    <Dropdown
+                      label="LGA"
+                      options={lgas.map((l) => ({ id: l.id, label: l.lga, value: l.lga }))}
+                      value={lga}
+                      onSelect={setLga}
+                      placeholder="Select LGA"
+                      icon="map"
+                      isLoading={isLoadingLgas}
+                    />
+                  </View>
+                </>
+              )}
+
+              {/* Email, Password, Confirm Password - for both roles */}
               <View style={signupStyles.inputGroup}>
-                <Text style={signupStyles.label}>Business Address</Text>
+                <Text style={signupStyles.label}>Email Address</Text>
                 <View style={signupStyles.inputWrapper}>
-                  <Feather name="map-pin" size={20} color="#64748B" />
+                  <Feather name="mail" size={20} color="#64748B" />
                   <TextInput
-                    value={address}
-                    onChangeText={searchAddress}
-                    placeholder="Start typing your address..."
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    placeholder="you@example.com"
                     style={signupStyles.input}
                     placeholderTextColor="#94A3B8"
                   />
                 </View>
-
-                {showSuggestions && suggestions.length > 0 && (
-                  <View style={{ 
-                    backgroundColor: '#fff', 
-                    borderRadius: 12, 
-                    marginTop: 4, 
-                    maxHeight: 220, 
-                    borderWidth: 1,
-                    borderColor: '#E2E8F0',
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.1,
-                    elevation: 3
-                  }}>
-                    {suggestions.map((item, index) => (
-                      <TouchableOpacity 
-                        key={index}
-                        style={{ padding: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}
-                        onPress={() => selectSuggestion(item)}
-                      >
-                        <Text style={{ fontSize: 15 }}>{item.place_name}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
               </View>
 
               <View style={signupStyles.inputGroup}>
-                <Dropdown
-                  label="Business Category"
-                  options={categories}
-                  value={category}
-                  onSelect={setCategory}
-                  placeholder="Select category"
-                  icon="tag"
-                />
+                <Text style={signupStyles.label}>Password</Text>
+                <View style={signupStyles.inputWrapper}>
+                  <Feather name="lock" size={20} color="#64748B" />
+                  <TextInput
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                    placeholder="Minimum 6 characters"
+                    style={signupStyles.input}
+                    placeholderTextColor="#94A3B8"
+                  />
+                </View>
               </View>
 
               <View style={signupStyles.inputGroup}>
-                <Dropdown
-                  label="State"
-                  options={states.map((s) => ({ id: s.id, label: s.state, value: s.state }))}
-                  value={state}
-                  onSelect={setState}
-                  placeholder="Select state"
-                  icon="map-pin"
-                  isLoading={isLoadingStates}
-                />
+                <Text style={signupStyles.label}>Confirm Password</Text>
+                <View style={signupStyles.inputWrapper}>
+                  <Feather name="lock" size={20} color="#64748B" />
+                  <TextInput
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry
+                    placeholder="Repeat your password"
+                    style={signupStyles.input}
+                    placeholderTextColor="#94A3B8"
+                  />
+                </View>
               </View>
 
-              <View style={signupStyles.inputGroup}>
-                <Dropdown
-                  label="LGA"
-                  options={lgas.map((l) => ({ id: l.id, label: l.lga, value: l.lga }))}
-                  value={lga}
-                  onSelect={setLga}
-                  placeholder="Select LGA"
-                  icon="map"
-                  isLoading={isLoadingLgas}
-                />
+              <TouchableOpacity 
+                style={[signupStyles.createButton, isSubmitting && { opacity: 0.6 }]} 
+                onPress={handleSignup}
+                disabled={isSubmitting}
+              >
+                <Text style={signupStyles.createButtonText}>
+                  {isSubmitting ? 'Creating account...' : 'Create account'}
+                </Text>
+              </TouchableOpacity>
+
+              <Text style={signupStyles.orText}>Or sign up with</Text>
+              
+              <View style={signupStyles.socialContainer}>
+                <TouchableOpacity style={signupStyles.socialButton}>
+                  <FontAwesome name="google" size={20} color="#DB4437" />
+                </TouchableOpacity>
+                <TouchableOpacity style={signupStyles.socialButton}>
+                  <FontAwesome name="apple" size={20} color="#000000" />
+                </TouchableOpacity>
               </View>
             </>
           )}
-
-          {/* Email */}
-          <View style={signupStyles.inputGroup}>
-            <Text style={signupStyles.label}>Email Address</Text>
-            <View style={signupStyles.inputWrapper}>
-              <Feather name="mail" size={20} color="#64748B" />
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                placeholder="you@example.com"
-                style={signupStyles.input}
-                placeholderTextColor="#94A3B8"
-              />
-            </View>
-            {submitted && !emailRegex.test(email) && <Text style={{color: '#EF4444', fontSize: 12, marginTop: 4}}>Valid email is required</Text>}
-          </View>
-
-          {/* Password */}
-          <View style={signupStyles.inputGroup}>
-            <Text style={signupStyles.label}>Password</Text>
-            <View style={signupStyles.inputWrapper}>
-              <Feather name="lock" size={20} color="#64748B" />
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                placeholder="Minimum 6 characters"
-                style={signupStyles.input}
-                placeholderTextColor="#94A3B8"
-              />
-            </View>
-            {submitted && password.length < 6 && <Text style={{color: '#EF4444', fontSize: 12, marginTop: 4}}>Password must be at least 6 characters</Text>}
-          </View>
-
-          {/* Confirm Password */}
-          <View style={signupStyles.inputGroup}>
-            <Text style={signupStyles.label}>Confirm Password</Text>
-            <View style={signupStyles.inputWrapper}>
-              <Feather name="repeat" size={20} color="#64748B" />
-              <TextInput
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-                placeholder="Repeat your password"
-                style={signupStyles.input}
-                placeholderTextColor="#94A3B8"
-              />
-            </View>
-            {submitted && password !== confirmPassword && <Text style={{color: '#EF4444', fontSize: 12, marginTop: 4}}>Passwords do not match</Text>}
-          </View>
-
-          <TouchableOpacity 
-            style={[signupStyles.createButton, isSubmitting && { opacity: 0.6 }]} 
-            onPress={handleSignup}
-            disabled={isSubmitting}
-          >
-            <Text style={signupStyles.createButtonText}>
-              {isSubmitting ? 'Creating account...' : 'Create account'}
-            </Text>
-          </TouchableOpacity>
-
-          <Text style={signupStyles.orText}>Or sign up with</Text>
-          
-          <View style={signupStyles.socialContainer}>
-            <TouchableOpacity style={signupStyles.socialButton}>
-              <FontAwesome name="facebook" size={20} color="#3B5998" />
-            </TouchableOpacity>
-            <TouchableOpacity style={signupStyles.socialButton}>
-              <FontAwesome name="google" size={20} color="#DB4437" />
-            </TouchableOpacity>
-            <TouchableOpacity style={signupStyles.socialButton}>
-              <FontAwesome name="apple" size={20} color="#000000" />
-            </TouchableOpacity>
-          </View>
         </View>
 
         <View style={signupStyles.footer}>

@@ -8,8 +8,6 @@ export default function TabLayout() {
 
   if (isLoading) return null;
 
-  const isMerchant = user?.role === 'MERCHANT';
-
   return (
     <Tabs
       screenOptions={{
@@ -26,20 +24,41 @@ export default function TabLayout() {
       }}
       initialRouteName="home"
     >
-      <Tabs.Screen name="home" options={{ title: 'Home', tabBarIcon: ({ color, size }) => <Feather name="home" size={size} color={color} /> }} />
-      <Tabs.Screen name="redemptions" options={{ title: 'My Activity', tabBarIcon: ({ color, size }) => <Feather name="tag" size={size} color={color} /> }} />
-
-      {/* Scan tab - now 100% hidden for customers */}
-      <Tabs.Screen
-        name="scan"
-        options={{
-          title: 'Scan',
-          tabBarIcon: ({ color, size }) => <Feather name="camera" size={size} color={color} />,
-          href: isMerchant ? undefined : null,   // ← this hides the tab completely
-        }}
+      {/* Home */}
+      <Tabs.Screen 
+        name="home" 
+        options={{ 
+          title: 'Home', 
+          tabBarIcon: ({ color, size }) => <Feather name="home" size={size} color={color} /> 
+        }} 
       />
 
-      <Tabs.Screen name="profile" options={{ title: 'Me', tabBarIcon: ({ color, size }) => <Feather name="user" size={size} color={color} /> }} />
+      {/* New Search Tab */}
+      <Tabs.Screen 
+        name="search" 
+        options={{ 
+          title: 'Search', 
+          tabBarIcon: ({ color, size }) => <Feather name="search" size={size} color={color} /> 
+        }} 
+      />
+
+      {/* My Activity (tabified) */}
+      <Tabs.Screen 
+        name="redemptions" 
+        options={{ 
+          title: 'Activity', 
+          tabBarIcon: ({ color, size }) => <Feather name="tag" size={size} color={color} /> 
+        }} 
+      />
+
+      {/* Profile */}
+      <Tabs.Screen 
+        name="profile" 
+        options={{ 
+          title: 'Me', 
+          tabBarIcon: ({ color, size }) => <Feather name="user" size={size} color={color} /> 
+        }} 
+      />
     </Tabs>
   );
 }

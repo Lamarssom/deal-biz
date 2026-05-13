@@ -2,19 +2,14 @@ import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-
-const API_BASE_URL = __DEV__ 
-  ? 'http://192.168.0.168:3000'
-  : 'http://localhost:3000';
-
-const CLOUDINARY_CLOUD_NAME = 'dzvajdc4b';     
-const CLOUDINARY_UPLOAD_PRESET = 'dealbiz';
+import { API_BASE_URL, CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET } from '../constants/config';
 
 export interface RegisterPayload {
   email: string;
   password: string;
   name: string;
   role: 'MERCHANT' | 'CUSTOMER';
+  phoneNumber?: string;
   businessName?: string;
   category?: string;
   businessLGA?: string;
@@ -23,6 +18,20 @@ export interface RegisterPayload {
 export interface LoginPayload {
   email: string;
   password: string;
+}
+
+export interface VerifyOtpPayload {
+  email: string;
+  code: string;
+}
+
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ResetPasswordPayload {          // ← NEW
+  token: string;
+  newPassword: string;
 }
 
 export interface State {
@@ -197,7 +206,6 @@ class ApiService {
           if (response.status === 401) {
             console.log('[API] 401 Unauthorized → auto-logout');
             await this.removeToken();
-            // You can listen to this in AuthContext or screens if you want to redirect immediately
           }
           throw new Error(data.message || `API Error: ${response.status}`);
         }
@@ -235,8 +243,16 @@ class ApiService {
     return this.request<AuthResponse>('/auth/login', 'POST', payload);
   }
 
-  async verifyEmail(email: string, code: string): Promise<any> {
-    return this.request<any>('/auth/verify-email', 'POST', { email, code });
+  async verifyOtp(payload: VerifyOtpPayload): Promise<any> {
+    return this.request<any>('/auth/verify-otp', 'POST', payload);
+  }
+
+  async forgotPassword(payload: ForgotPasswordPayload): Promise<any> {
+    return this.request<any>('/auth/forgot-password', 'POST', payload);
+  }
+
+  async resetPassword(payload: ResetPasswordPayload): Promise<any> {   // ← NEW
+    return this.request<any>('/auth/reset-password', 'POST', payload);
   }
 
   // Cached endpoints (user-specific)

@@ -9,9 +9,9 @@ import {
 } from 'react-native';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../../context/AuthContext';
-import { apiService } from '../../services/api';
-import { useMerchant } from '../../context/MerchantContext';
+import { useAuth } from '../context/AuthContext';
+import { apiService } from '../services/api';
+import { useMerchant } from '../context/MerchantContext';
 
 
 export default function ScanScreen() {

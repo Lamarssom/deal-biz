@@ -37,20 +37,34 @@ export default function LoginScreen() {
     setSubmitted(true);
     
     if (!emailRegex.test(email) || password.length < 6) {
-      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please enter valid email and password' });
+      Toast.show({ 
+        type: 'error', 
+        text1: 'Validation Error', 
+        text2: 'Please enter valid email and password' 
+      });
       return;
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     setIsLoggingIn(true);
     try {
-      await login(email, password);
+      await login(normalizedEmail, password);
       Toast.show({ type: 'success', text1: 'Login Successful!' });
       router.replace('/(tabs)/home');
     } catch (error: any) {
-      Toast.show({ type: 'error', text1: 'Login Failed', text2: error?.message || 'Invalid credentials' });
+      Toast.show({ 
+        type: 'error', 
+        text1: 'Login Failed', 
+        text2: error?.message || 'Invalid credentials' 
+      });
     } finally {
       setIsLoggingIn(false);
     }
+  };
+
+  const handleForgotPassword = () => {
+    router.push('/forgot-password');
   };
 
   return (
@@ -95,15 +109,8 @@ export default function LoginScreen() {
             </View>
 
             <View style={loginStyles.inputContainer}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                <Text style={loginStyles.label}>Password</Text>
-                <Text 
-                  style={loginStyles.forgotPassword} 
-                  onPress={() => Toast.show({ type: 'info', text1: 'Coming soon', text2: 'Forgot password flow' })}
-                >
-                  Forgot password?
-                </Text>
-              </View>
+              <Text style={loginStyles.label}>Password</Text>
+              
               <View style={loginStyles.inputWrapper}>
                 <Feather name="lock" size={20} color="#64748B" />
                 <TextInput
@@ -118,11 +125,21 @@ export default function LoginScreen() {
                   <Feather name={showPassword ? "eye" : "eye-off"} size={20} color="#64748B" />
                 </TouchableOpacity>
               </View>
+
               {submitted && password.length < 6 && (
                 <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 6 }}>
                   Password must be at least 6 characters
                 </Text>
               )}
+
+              <TouchableOpacity
+                style={{ alignSelf: 'flex-end', marginTop: 8 }}
+                onPress={handleForgotPassword}
+              >
+                <Text style={loginStyles.forgotPassword}>
+                  Forgot password?
+                </Text>
+              </TouchableOpacity>
             </View>
 
             <TouchableOpacity 
@@ -138,9 +155,6 @@ export default function LoginScreen() {
             <View style={{ marginTop: 32, alignItems: 'center' }}>
               <Text style={loginStyles.orText}>Or login with</Text>
               <View style={loginStyles.socialContainer}>
-                <TouchableOpacity style={loginStyles.socialButton}>
-                  <FontAwesome name="facebook" size={22} color="#3B5998" />
-                </TouchableOpacity>
                 <TouchableOpacity style={loginStyles.socialButton}>
                   <FontAwesome name="google" size={22} color="#DB4437" />
                 </TouchableOpacity>

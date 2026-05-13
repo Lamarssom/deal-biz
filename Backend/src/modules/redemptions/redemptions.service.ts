@@ -4,12 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';           // ← added In if needed later
+import { Repository } from 'typeorm';
 import * as QRCode from 'qrcode';
 import { Redemption } from '../../entities/redemption.entity';
 import { Promotion } from '../../entities/promotion.entity';
 import { User } from '../../entities/user.entity';
-import { Merchant } from '../../entities/merchant.entity';   // ← already there
+import { Merchant } from '../../entities/merchant.entity';
 import { GenerateQrDto } from './dto/generate-qr.dto';
 import { RedeemDto } from './dto/redeem.dto';
 import * as crypto from 'crypto';
@@ -29,14 +29,13 @@ export class RedemptionsService {
     @InjectRepository(User)
     private userRepo: Repository<User>,
 
-    @InjectRepository(Merchant)                    // ← FIXED: now properly injected
+    @InjectRepository(Merchant)
     private merchantRepo: Repository<Merchant>,
 
     private eventEmitter: EventEmitter2,
   ) {}
 
   async generateQR(userId: string, dto: GenerateQrDto) {
-    // ... (your existing generateQR code stays exactly the same)
     const promotion = await this.promotionRepo.findOne({
       where: { id: dto.promotionId, isActive: true },
       relations: ['merchant'],
@@ -70,7 +69,7 @@ export class RedemptionsService {
     const redemption = this.redemptionRepo.create({
       promotion,
       promotionId: dto.promotionId,
-      customer: userExists,
+      customer: userExists as User,           // type assertion to satisfy relation
       customerId: userId,
       qrCode,
       isRedeemed: false,
@@ -115,10 +114,8 @@ export class RedemptionsService {
 
       const successFee = Math.round(promotion.price * 0.03 * quantity * 100) / 100;
 
-      // Debug log so you can see exactly what is being charged
-      console.log(`[Redemption] Adding success fee ₦${successFee} to merchant ${merchant.id} (price: ${promotion.price}, qty: ${quantity})`);
+      console.log(`[Redemption] Adding success fee ₦${successFee} to merchant ${merchant.id}`);
 
-      // Update redeemedCount with safe query
       const updateResult = await manager
         .createQueryBuilder()
         .update(Promotion)
@@ -136,7 +133,6 @@ export class RedemptionsService {
         redeemedAt: new Date(),
       });
 
-      // ←←← FIXED: Clean atomic balance increment (this was the broken part)
       await manager.increment(
         Merchant,
         { id: merchant.id },

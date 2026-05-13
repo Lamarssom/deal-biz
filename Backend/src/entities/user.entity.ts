@@ -5,23 +5,36 @@ export type Role = 'CUSTOMER' | 'MERCHANT';
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column({ unique: true })
-  email: string;
+  email!: string;
+
+  @Column({ nullable: true, unique: true })
+  phoneNumber?: string;
 
   @Column({ select: false })
-  password: string;
+  password!: string;
 
   @Column({ type: 'enum', enum: ['CUSTOMER'], default: 'CUSTOMER' })
-  role: Role;
+  role!: Role;
+
+  @Column({ default: false })                // ← Changed to false so customers also need verification
+  isVerified!: boolean;
+
+  @Column({ nullable: true })
+  verificationCode?: string;
+
+  @Column({ nullable: true })
+  verificationExpiresAt?: Date;
 
   @Column({ default: true })
-  isActive: boolean;
+  isActive!: boolean;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
+  name: any;
 }
