@@ -5,10 +5,10 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import Logo from '../components/Logo';
 import { apiService } from '../services/api';
 import { verifyEmailStyles } from '../styles/verify-email.styles';
@@ -26,23 +26,17 @@ export default function VerifyEmailScreen() {
     setSubmitted(true);
 
     if (!email.trim() || code.length !== 6) {
-      Alert.alert(
-        'Validation Error',
-        'Please enter a valid email and 6-digit code.'
-      );
+      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please enter a valid email and 6-digit code.' });
       return;
     }
 
     setIsSubmitting(true);
     try {
       const response = await apiService.verifyEmail(email, code);
-      Alert.alert('Success', response.message || 'Email verified successfully!');
-      router.replace('/home');
+      Toast.show({ type: 'success', text1: '✅ Email Verified!', text2: 'You can now log in.' });
+      router.replace('/(tabs)/home');
     } catch (error: any) {
-      const errorMessage =
-        error?.message || 'Verification failed. Please try again.';
-      Alert.alert('Error', errorMessage);
-      console.log('Verification error:', error);
+      Toast.show({ type: 'error', text1: 'Verification Failed', text2: error?.message || 'Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -55,7 +49,6 @@ export default function VerifyEmailScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <View>
-        {/* Header */}
         <View style={verifyEmailStyles.headerContainer}>
           <Logo width={150} height={60} />
           <Text style={verifyEmailStyles.title}>Verify Your Email</Text>
@@ -65,9 +58,7 @@ export default function VerifyEmailScreen() {
           <Text style={verifyEmailStyles.caption}>{email}</Text>
         </View>
 
-        {/* Form */}
         <View style={{ marginBottom: 24 }}>
-          {/* Email Field */}
           <View style={verifyEmailStyles.inputGroup}>
             <Text style={verifyEmailStyles.label}>Email Address</Text>
             <View style={verifyEmailStyles.inputWrapper}>
@@ -87,7 +78,6 @@ export default function VerifyEmailScreen() {
             )}
           </View>
 
-          {/* Code Field */}
           <View style={verifyEmailStyles.inputGroup}>
             <Text style={verifyEmailStyles.label}>Verification Code</Text>
             <View style={verifyEmailStyles.inputWrapper}>
@@ -107,14 +97,12 @@ export default function VerifyEmailScreen() {
             )}
           </View>
 
-          {/* Hint */}
           <View style={verifyEmailStyles.hintBox}>
             <Text style={verifyEmailStyles.hintText}>
               Check your email inbox (and spam folder) for the verification code.
             </Text>
           </View>
 
-          {/* Verify Button */}
           <TouchableOpacity
             style={[
               verifyEmailStyles.verifyButton,
@@ -129,10 +117,9 @@ export default function VerifyEmailScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Footer */}
         <View style={verifyEmailStyles.footer}>
           <Text style={verifyEmailStyles.footerText}>Didn't receive code? </Text>
-          <TouchableOpacity onPress={() => Alert.alert('Resend code feature coming soon')}>
+          <TouchableOpacity onPress={() => Toast.show({ type: 'info', text1: 'Resend coming soon' })}>
             <Text style={verifyEmailStyles.footerLink}>Resend</Text>
           </TouchableOpacity>
         </View>

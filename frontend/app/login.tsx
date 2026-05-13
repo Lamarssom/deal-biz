@@ -6,11 +6,11 @@ import {
   TextInput, 
   TouchableOpacity, 
   KeyboardAvoidingView, 
-  Platform, 
-  Alert
+  Platform 
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather, FontAwesome } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import Logo from '../components/Logo';
 import { loginStyles } from '../styles/login.styles';
 import { useAuth } from '../context/AuthContext';
@@ -20,33 +20,39 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export default function LoginScreen() {
   const router = useRouter();
   const { email: paramEmail } = useLocalSearchParams<{ email: string }>();
+  
   const [email, setEmail] = useState(paramEmail || '');
   const [password, setPassword] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  const { login } = useAuth();
 
   useEffect(() => {
-    if (paramEmail) {
-      setEmail(paramEmail);
-    }
+    if (paramEmail) setEmail(paramEmail);
   }, [paramEmail]);
-
-  const { login } = useAuth();  
 
   const handleLogin = async () => {
     setSubmitted(true);
     
     if (!emailRegex.test(email) || password.length < 6) {
+      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please enter valid email and password' });
       return;
     }
 
+    setIsLoggingIn(true);
     try {
       await login(email, password);
-      router.replace('/welcome');
+      Toast.show({ type: 'success', text1: 'Login Successful!' });
+      router.replace('/(tabs)/home');
     } catch (error: any) {
-      Alert.alert('Login Failed', error?.message || 'Invalid credentials');
+      Toast.show({ type: 'error', text1: 'Login Failed', text2: error?.message || 'Invalid credentials' });
+    } finally {
+      setIsLoggingIn(false);
     }
   };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -59,18 +65,14 @@ export default function LoginScreen() {
       >
         <View style={{ flex: 1, justifyContent: 'space-between' }}>
           
-          {/* Logo */}
           <View style={loginStyles.logoContainer}>
             <Logo width={240} height={100} />
           </View>
 
-          {/* Title */}
           <Text style={loginStyles.title}>Welcome Back</Text>
           <Text style={loginStyles.subtitle}>Login to your account</Text>
 
-          {/* Form Card */}
           <View style={loginStyles.formCard}>
-            {/* Email */}
             <View style={loginStyles.inputContainer}>
               <Text style={loginStyles.label}>Email</Text>
               <View style={loginStyles.inputWrapper}>
@@ -92,13 +94,12 @@ export default function LoginScreen() {
               )}
             </View>
 
-            {/* Password */}
             <View style={loginStyles.inputContainer}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
                 <Text style={loginStyles.label}>Password</Text>
                 <Text 
                   style={loginStyles.forgotPassword} 
-                  onPress={() => alert('Forgot password flow coming soon')}
+                  onPress={() => Toast.show({ type: 'info', text1: 'Coming soon', text2: 'Forgot password flow' })}
                 >
                   Forgot password?
                 </Text>
@@ -124,15 +125,18 @@ export default function LoginScreen() {
               )}
             </View>
 
-            {/* Login Button */}
-            <TouchableOpacity style={loginStyles.loginButton} onPress={handleLogin}>
-              <Text style={loginStyles.loginButtonText}>Login</Text>
+            <TouchableOpacity 
+              style={[loginStyles.loginButton, isLoggingIn && { opacity: 0.7 }]} 
+              onPress={handleLogin}
+              disabled={isLoggingIn}
+            >
+              <Text style={loginStyles.loginButtonText}>
+                {isLoggingIn ? 'Logging in...' : 'Login'}
+              </Text>
             </TouchableOpacity>
 
-            {/* Social Login */}
             <View style={{ marginTop: 32, alignItems: 'center' }}>
               <Text style={loginStyles.orText}>Or login with</Text>
-              
               <View style={loginStyles.socialContainer}>
                 <TouchableOpacity style={loginStyles.socialButton}>
                   <FontAwesome name="facebook" size={22} color="#3B5998" />
@@ -147,13 +151,9 @@ export default function LoginScreen() {
             </View>
           </View>
 
-          {/* Sign Up Link */}
           <View style={loginStyles.signupContainer}>
             <Text style={loginStyles.signupText}>Don’t have an account? </Text>
-            <Text 
-              style={loginStyles.signupLink} 
-              onPress={() => router.push('/signup')}
-            >
+            <Text style={loginStyles.signupLink} onPress={() => router.push('/signup')}>
               Sign up
             </Text>
           </View>

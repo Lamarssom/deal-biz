@@ -1,10 +1,11 @@
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 
 const API_BASE_URL = __DEV__ 
-  ? 'http://192.168.0.168:3000'  // Use IP address for mobile simulators
-  : 'http://localhost:3000';     // Use localhost for web development
+  ? 'http://192.168.0.168:3000'
+  : 'http://localhost:3000';
 
 const CLOUDINARY_CLOUD_NAME = 'dzvajdc4b';     
 const CLOUDINARY_UPLOAD_PRESET = 'dealbiz';
@@ -106,27 +107,29 @@ class ApiService {
       if (Platform.OS !== 'web') {
         this.token = await SecureStore.getItemAsync('auth_token');
       } else {
-        console.log('⚠️ Web mode – skipping SecureStore');
-        this.token = null;
+        this.token = await AsyncStorage.getItem('auth_token');
       }
 
       const userData = await AsyncStorage.getItem('user_data');
-      if (userData) {
-        this.user = JSON.parse(userData);
-      }
+      if (userData) this.user = JSON.parse(userData);
+
+      console.log('[API] init complete → token:', !!this.token, 'userId:', this.user?.id);
     } catch (error) {
       console.log('Error loading token/user:', error);
     }
   }
 
-  setToken(token: string) {
-    this.token = token;
-  }
+  setToken(token: string) { this.token = token; }
 
   async saveToken(token: string) {
     try {
-      await SecureStore.setItemAsync('auth_token', token);
+      if (Platform.OS !== 'web') {
+        await SecureStore.setItemAsync('auth_token', token);
+      } else {
+        await AsyncStorage.setItem('auth_token', token);
+      }
       this.token = token;
+      console.log('[API] Token saved successfully');
     } catch (error) {
       console.log('Error saving token:', error);
     }
@@ -141,242 +144,161 @@ class ApiService {
     }
   }
 
-  getUser() {
-    return this.user;
+  getUser() { return this.user; }
+
+  async clearCache() {
+    if (!this.user?.id) return;
+    try {
+      await AsyncStorage.multiRemove([
+        `@deal_biz_cache_favourites_${this.user.id}`,
+        `@deal_biz_cache_nearby_${this.user.id}`,
+        `@deal_biz_cache_redemptions_${this.user.id}`,
+        `@deal_biz_cache_promotions_${this.user.id}`,
+        `@deal_biz_cache_analytics_${this.user.id}`,
+      ]);
+      console.log(`[API] All caches cleared for user ${this.user.id}`);
+    } catch (e) {}
   }
 
-  async removeToken() {
-    try {
-      await SecureStore.deleteItemAsync('auth_token');
-      await AsyncStorage.removeItem('user_data');
-      this.token = null;
-      this.user = null;
-    } catch (error) {
-      console.log('Error removing token:', error);
-    }
+  private getCacheKey(baseKey: string): string {
+    return this.user?.id ? `${baseKey}_${this.user.id}` : baseKey;
   }
 
   private async request<T>(
     endpoint: string,
     method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
     body?: any,
-    isAuth: boolean = false
+    isAuth: boolean = false,
+    cacheKeyBase?: string
   ): Promise<T> {
-    try {
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
+    const maxRetries = 3;
+    let attempt = 0;
 
-      if (isAuth && this.token) {
-        headers['Authorization'] = `Bearer ${this.token}`;
+    while (attempt < maxRetries) {
+      try {
+        const headers: HeadersInit = { 'Content-Type': 'application/json' };
+
+        if (isAuth && !this.token) {
+          await this.init();
+        }
+        if (isAuth && this.token) {
+          headers['Authorization'] = `Bearer ${this.token}`;
+        }
+
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+          method,
+          headers,
+          body: body ? JSON.stringify(body) : undefined,
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            console.log('[API] 401 Unauthorized → auto-logout');
+            await this.removeToken();
+            // You can listen to this in AuthContext or screens if you want to redirect immediately
+          }
+          throw new Error(data.message || `API Error: ${response.status}`);
+        }
+
+        if (method === 'GET' && cacheKeyBase) {
+          const cacheKey = this.getCacheKey(cacheKeyBase);
+          await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
+        }
+
+        return data as T;
+      } catch (error: any) {
+        attempt++;
+
+        const netState = await NetInfo.fetch();
+        if ((!netState.isConnected || !navigator.onLine) && cacheKeyBase) {
+          const cacheKey = this.getCacheKey(cacheKeyBase);
+          const cached = await AsyncStorage.getItem(cacheKey);
+          if (cached) return JSON.parse(cached) as T;
+        }
+
+        if (attempt === maxRetries) throw error;
+
+        await new Promise(resolve => setTimeout(resolve, 400 * Math.pow(2, attempt - 1)));
       }
-
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || `API Error: ${response.status}`);
-      }
-
-      return data as T;
-    } catch (error) {
-      console.log('API Error:', error);
-      throw error;
     }
+    throw new Error('Request failed after retries');
   }
 
-  // Auth endpoints
+  // Auth
   async register(payload: RegisterPayload): Promise<AuthResponse> {
-    const response = await this.request<AuthResponse>(
-      '/auth/register',
-      'POST',
-      payload
-    );
-    const token = response.accessToken || response.access_token;
-    if (token) {
-      await this.saveToken(token);
-      this.token = token;
-    }
-    if (response.user) {
-      await this.saveUser(response.user);
-    }
-    return response;
+    return this.request<AuthResponse>('/auth/register', 'POST', payload);
   }
 
   async login(payload: LoginPayload): Promise<AuthResponse> {
-    const response = await this.request<AuthResponse>(
-      '/auth/login',
-      'POST',
-      payload
-    );
-    const token = response.accessToken || response.access_token;
-    if (token) {
-      await this.saveToken(token);
-      this.token = token;
-    }
-    if (response.user) {
-      await this.saveUser(response.user);
-    }
-    return response;
+    return this.request<AuthResponse>('/auth/login', 'POST', payload);
   }
 
   async verifyEmail(email: string, code: string): Promise<any> {
-    return await this.request<any>(
-      '/auth/verify-email',
-      'POST',
-      { email, code },
-      false
-    );
+    return this.request<any>('/auth/verify-email', 'POST', { email, code });
   }
 
-  // Location endpoints
-  async getStates(): Promise<State[]> {
-    return await this.request<State[]>(
-      '/location/states',
-      'GET',
-      undefined,
-      false
-    );
-  }
-
-  async getLGAs(state?: string): Promise<LGA[]> {
-    const endpoint = state 
-      ? `/location/lga?state=${encodeURIComponent(state)}`
-      : '/location/lga';
-    return await this.request<LGA[]>(
-      endpoint,
-      'GET',
-      undefined,
-      false
-    );
-  }
-
-  // Promotions endpoints
-  async createPromotion(data: {
-    type: string;
-    title: string;
-    price: number;
-    originalPrice: number;
-    expiry: string;
-    quantityLimit: number;
-  }): Promise<any> {
-    return await this.request<any>(
-      '/promotions',
-      'POST',
-      data,
-      true
-    );
-  }
-
-  // Merchant analytics endpoint
-  async getMerchantAnalytics(): Promise<any> {
-    return await this.request<any>(
-      '/analytics/merchant',
-      'GET',
-      undefined,
-      true  // requires auth
-    );
-  }
-
-    // PROMOTION WITH PAYMENT
-  async createPromotionWithPayment(data: CreatePromotionPayload): Promise<PromotionPaymentResponse> {
-    return await this.request<PromotionPaymentResponse>(
-      '/promotions',
-      'POST',
-      data,
-      true
-    );
-  }
-
-  // SETTLE BALANCE
-  async settleMerchantBalance(payload: SettleBalancePayload): Promise<any> {
-    return await this.request<any>(
-      '/merchants/settle-balance',
-      'POST',
-      payload,
-      true
-    );
-  }
-
-  // Verify payment manually
-  async verifyPayment(reference: string): Promise<any> {
-    return await this.request<any>(
-      `/payments/verify/${reference}`,
-      'GET',
-      undefined,
-      true
-    );
-  }
-
+  // Cached endpoints (user-specific)
   async getNearbyPromotions(lat: number, lng: number, radius: number = 10): Promise<NearbyPromotion[]> {
-    return await this.request<NearbyPromotion[]>(
+    return this.request<NearbyPromotion[]>(
       `/promotions/nearby?lat=${lat}&lng=${lng}&radius=${radius}`,
-      'GET',
-      undefined,
-      true 
+      'GET', undefined, true, '@deal_biz_cache_nearby'
     );
   }
 
-  async generateQR(payload: { promotionId: string; quantity: number }): Promise<GenerateQRResponse> {
-    return await this.request<GenerateQRResponse>(
-      '/redemptions/generate',
-      'POST',
-      payload,
-      true
-    );
-  }
-
-  async redeem(qrCode: string): Promise<any> {
-    return await this.request<any>(
-      '/redemptions/redeem',
-      'POST',
-      { qrCode },
-      true 
-    );
+  async getMyFavourites(): Promise<any[]> {
+    return this.request<any[]>('/favourites', 'GET', undefined, true, '@deal_biz_cache_favourites');
   }
 
   async getMyRedemptions(): Promise<any[]> {
-    return await this.request<any[]>(
-      '/redemptions/my',
-      'GET',
-      undefined,
-      true 
-    );
+    return this.request<any[]>('/redemptions/my', 'GET', undefined, true, '@deal_biz_cache_redemptions');
   }
 
   async getMyPromotions(): Promise<any[]> {
-    return await this.request<any[]>(
-      '/promotions/my',
-      'GET',
-      undefined,
-      true
-    );
+    return this.request<any[]>('/promotions/my', 'GET', undefined, true, '@deal_biz_cache_promotions');
+  }
+
+  async getMerchantAnalytics(): Promise<any> {
+    return this.request<any>('/analytics/merchant', 'GET', undefined, true, '@deal_biz_cache_analytics');
+  }
+
+  // Other endpoints
+  async getStates(): Promise<State[]> {
+    return this.request<State[]>('/location/states', 'GET', undefined, false);
+  }
+
+  async getLGAs(state?: string): Promise<LGA[]> {
+    const endpoint = state ? `/location/lga?state=${encodeURIComponent(state)}` : '/location/lga';
+    return this.request<LGA[]>(endpoint, 'GET', undefined, false);
+  }
+
+  async createPromotionWithPayment(data: CreatePromotionPayload): Promise<PromotionPaymentResponse> {
+    return this.request<PromotionPaymentResponse>('/promotions', 'POST', data, true);
+  }
+
+  async settleMerchantBalance(payload: SettleBalancePayload): Promise<any> {
+    return this.request<any>('/merchants/settle-balance', 'POST', payload, true);
+  }
+
+  async generateQR(payload: { promotionId: string; quantity: number }): Promise<GenerateQRResponse> {
+    return this.request<GenerateQRResponse>('/redemptions/generate', 'POST', payload, true);
+  }
+
+  async redeem(qrCode: string): Promise<any> {
+    return this.request<any>('/redemptions/redeem', 'POST', { qrCode }, true);
   }
 
   async uploadImageToCloudinary(uri: string): Promise<string> {
-    if (Platform.OS === 'web') {
-      throw new Error('Image upload not supported on web yet');
-    }
+    if (Platform.OS === 'web') throw new Error('Image upload not supported on web yet');
 
     const formData = new FormData();
-    formData.append('file', {
-      uri,
-      type: 'image/jpeg',
-      name: 'promotion.jpg',
-    } as any);
+    formData.append('file', { uri, type: 'image/jpeg', name: 'promotion.jpg' } as any);
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
 
     const response = await fetch(
       `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
-      {
-        method: 'POST',
-        body: formData,
-      }
+      { method: 'POST', body: formData }
     );
 
     const data = await response.json();
@@ -384,32 +306,28 @@ class ApiService {
     throw new Error('Failed to upload image');
   }
 
-  
-  async getMyFavourites(): Promise<any[]> {
-    return await this.request<any[]>(
-      '/favourites',
-      'GET',
-      undefined,
-      true
-    );
-  }
-
   async addFavourite(promotionId: string): Promise<any> {
-    return await this.request<any>(
-      `/favourites/${promotionId}`,
-      'POST',
-      undefined,
-      true
-    );
+    return this.request<any>(`/favourites/${promotionId}`, 'POST', undefined, true);
   }
 
   async removeFavourite(promotionId: string): Promise<any> {
-    return await this.request<any>(
-      `/favourites/${promotionId}`,
-      'DELETE',
-      undefined,
-      true
-    );
+    return this.request<any>(`/favourites/${promotionId}`, 'DELETE', undefined, true);
+  }
+
+  async removeToken() {
+    try {
+      if (Platform.OS !== 'web') {
+        await SecureStore.deleteItemAsync('auth_token');
+      } else {
+        await AsyncStorage.removeItem('auth_token');
+      }
+      await AsyncStorage.removeItem('user_data');
+      this.token = null;
+      this.user = null;
+      console.log('[API] Token and user data removed successfully');
+    } catch (error) {
+      console.log('Error removing token:', error);
+    }
   }
 }
 

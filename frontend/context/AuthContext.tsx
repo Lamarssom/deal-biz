@@ -50,8 +50,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsSignedIn(true);
           console.log('✅ Auth restored successfully');
         }
-      } else {
-        console.log('⚠️ No token found');
       }
     } catch (e) {
       console.log('Failed to restore auth:', e);
@@ -66,13 +64,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await apiService.login({ email, password });
       
       if (response.accessToken && response.user) {
-        // Save token
-        if (Platform.OS !== 'web') {
-          await SecureStore.setItemAsync('auth_token', response.accessToken);
-        } else {
-          await AsyncStorage.setItem('auth_token', response.accessToken);
-        }
-        
+        await apiService.saveToken(response.accessToken);
+        await apiService.saveUser(response.user);
+        await apiService.clearCache();
+        await apiService.init();
+
         setUser(response.user);
         setIsSignedIn(true);
         console.log('✅ Login successful - token saved');
@@ -88,7 +84,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       const response = await apiService.register(data);
-      if (response.user) {
+      if (response.user && response.accessToken) {
+        await apiService.saveToken(response.accessToken);
+        await apiService.saveUser(response.user);
+        await apiService.clearCache();
+        await apiService.init();
+
         setUser(response.user);
         setIsSignedIn(true);
       }
@@ -101,13 +102,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     setIsLoading(true);
     try {
-      if (Platform.OS !== 'web') {
-        await SecureStore.deleteItemAsync('auth_token');
-      } else {
-        await AsyncStorage.removeItem('auth_token');
-      }
+      await apiService.clearCache();
+      await apiService.removeToken();     // ← Now properly implemented
       setUser(null);
       setIsSignedIn(false);
+      console.log('✅ Logout successful');
     } finally {
       setIsLoading(false);
     }

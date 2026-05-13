@@ -4,7 +4,6 @@ import {
   View,
   Text,
   ActivityIndicator,
-  Alert,
   RefreshControl,
   TouchableOpacity
 } from 'react-native';
@@ -15,6 +14,12 @@ import { useFavourites } from '../../context/FavouritesContext';
 import { apiService } from '../../services/api';
 import { redemptionStyles } from '../../styles/redemption.styles';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
+
+// New UI Components
+import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 export default function MyRedemptionsScreen() {
   const router = useRouter();
@@ -28,16 +33,21 @@ export default function MyRedemptionsScreen() {
 
   const loadMyRedemptions = async () => {
     if (!isSignedIn) return;
+    setLoading(true);
+    setError(null);
     try {
       const data = await apiService.getMyRedemptions();
       setRedemptions(data);
-      setError(null);
-    } catch (err) {
-      setError('Could not load your vouchers');
-      Alert.alert('Error', 'Could not load your vouchers');
+    } catch (err: any) {
+      setError('Could not load your vouchers. Pull down to retry.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const retryLoad = () => {
+    setError(null);
+    loadMyRedemptions();
   };
 
   useFocusEffect(
@@ -58,9 +68,7 @@ export default function MyRedemptionsScreen() {
   if (authLoading || loading) {
     return (
       <SafeAreaView style={redemptionStyles.container} edges={['top']}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#1C8EDA" />
-        </View>
+        <LoadingSkeleton />
       </SafeAreaView>
     );
   }
@@ -82,10 +90,14 @@ export default function MyRedemptionsScreen() {
 
           {/* Favourites Section */}
           <Text style={redemptionStyles.sectionTitle}>Favourites</Text>
-          {favourites.length === 0 ? (
-            <Text style={{ color: '#64748B', textAlign: 'center', padding: 40 }}>
-              No favourited promotions yet{'\n'}Tap the heart on any promotion
-            </Text>
+          {favouritesLoading ? (
+            <LoadingSkeleton />
+          ) : favourites.length === 0 ? (
+            <EmptyState 
+              icon="heart" 
+              title="No favourites yet" 
+              subtitle="Tap the heart on any promotion to save it here" 
+            />
           ) : (
             favourites.map((fav) => {
               const promo = fav.promotion;
@@ -110,9 +122,11 @@ export default function MyRedemptionsScreen() {
           {/* Active Vouchers */}
           <Text style={redemptionStyles.sectionTitle}>Active Vouchers</Text>
           {activeVouchers.length === 0 ? (
-            <Text style={{ color: '#64748B', textAlign: 'center', padding: 40 }}>
-              No active vouchers yet{'\n'}Generate one from a promotion!
-            </Text>
+            <EmptyState 
+              icon="award" 
+              title="No active vouchers" 
+              subtitle="Generate a QR code from a promotion!" 
+            />
           ) : (
             activeVouchers.map((redemption) => (
               <View key={redemption.id} style={redemptionStyles.card}>

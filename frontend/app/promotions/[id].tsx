@@ -5,7 +5,6 @@ import {
   View, 
   Text, 
   TouchableOpacity, 
-  Alert, 
   ActivityIndicator, 
   Modal,
   Image,
@@ -15,6 +14,7 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../services/api';
 import { promotionStyles } from '../../styles/promotion.styles';
+import Toast from 'react-native-toast-message';
 
 export default function PromotionDetail() {
   const router = useRouter();
@@ -31,7 +31,6 @@ export default function PromotionDetail() {
   const [userLat, setUserLat] = useState<number>(6.5244);
   const [userLng, setUserLng] = useState<number>(3.3792);
 
-  // Auto-refresh when returning to this screen
   useFocusEffect(
     useCallback(() => {
       getRealUserLocation();
@@ -76,7 +75,7 @@ export default function PromotionDetail() {
       );
       setQrGenerated(hasGenerated);
     } catch (error) {
-      Alert.alert("Error", "Failed to load promotion details");
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to load promotion details' });
     } finally {
       setLoading(false);
     }
@@ -96,16 +95,13 @@ export default function PromotionDetail() {
 
       setQrGenerated(true);
 
-      Alert.alert(
-        "✅ QR Code Generated",
-        `Quantity: ${selectedQuantity} × ${promotion.title}`,
-        [
-          { text: "View My Vouchers", onPress: () => router.push('/redemptions') },
-          { text: "OK", style: "cancel" }
-        ]
-      );
+      Toast.show({ 
+        type: 'success', 
+        text1: '✅ QR Code Generated', 
+        text2: `Quantity: ${selectedQuantity} × ${promotion.title}` 
+      });
     } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to generate QR code");
+      Toast.show({ type: 'error', text1: 'Error', text2: error.message || 'Failed to generate QR code' });
     }
   };
 

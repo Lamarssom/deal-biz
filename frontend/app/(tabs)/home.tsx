@@ -5,7 +5,6 @@ import {
   Text, 
   TouchableOpacity, 
   TextInput, 
-  Alert,
   ActivityIndicator,
   Image,
   RefreshControl,
@@ -14,17 +13,25 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import Toast from 'react-native-toast-message';
 
 import { homeStyles } from '../../styles/home.styles';
 import { useAuth } from '../../context/AuthContext';
 import { useFavourites } from '../../context/FavouritesContext';
 import { apiService } from '../../services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNetwork } from '../../context/NetworkContext';
+
+// UI Components
+import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { user, logout, isSignedIn, isLoading: authLoading } = useAuth();
   const { isFavourite, toggleFavourite, refreshFavourites } = useFavourites();
+  const { isConnected } = useNetwork();
 
   const [promotions, setPromotions] = useState<any[]>([]);
   const [filteredPromotions, setFilteredPromotions] = useState<any[]>([]);
@@ -42,6 +49,11 @@ export default function HomeScreen() {
     if (hour < 12) return 'Good morning';
     if (hour < 18) return 'Good afternoon';
     return 'Good evening';
+  };
+
+  const retryLoad = () => {
+    setError(null);
+    getUserLocation();
   };
 
   useFocusEffect(
@@ -87,8 +99,8 @@ export default function HomeScreen() {
       setPromotions(data);
       setFilteredPromotions(data);
       setError(null);
-    } catch (error) {
-      setError("Couldn't load promotions. Pull down to retry.");
+    } catch (error: any) {
+      setError("Couldn't load promotions. Check your connection.");
     } finally {
       setLoading(false);
     }
@@ -99,7 +111,6 @@ export default function HomeScreen() {
       setFilteredPromotions(promotions);
       return;
     }
-
     const query = searchQuery.toLowerCase().trim();
     const filtered = promotions.filter((promo: any) =>
       promo.title?.toLowerCase().includes(query) ||
@@ -180,27 +191,29 @@ export default function HomeScreen() {
           />
         </View>
 
-        {/* Nearby Promotions */}
+        {/* Nearby Promotions Header */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 20 }}>
           <Text style={homeStyles.sectionTitle}>Nearby Promotions</Text>
           {locationLoading && <ActivityIndicator color="#1C8EDA" />}
         </View>
 
-        {loading && (
-          <View style={{ padding: 40, alignItems: 'center' }}>
-            <ActivityIndicator size="large" color="#1C8EDA" />
-            <Text style={{ marginTop: 12, color: '#64748B' }}>Finding the best deals near you...</Text>
-          </View>
+        {/* Loading */}
+        {loading && <LoadingSkeleton />}
+
+        {/* Error */}
+        {error && !loading && <ErrorState message={error} onRetry={retryLoad} />}
+
+        {/* Empty */}
+        {!loading && !error && filteredPromotions.length === 0 && (
+          <EmptyState 
+            icon="search" 
+            title="No promotions found" 
+            subtitle="Try changing your search or location" 
+          />
         )}
 
-        {!loading && filteredPromotions.length === 0 && (
-          <View style={{ padding: 40, alignItems: 'center' }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', color: '#0F172A' }}>No matching promotions</Text>
-          </View>
-        )}
-
-        {/* Promotions List */}
-        {filteredPromotions.map((promo: any) => {
+        {/* List */}
+        {!loading && !error && filteredPromotions.length > 0 && filteredPromotions.map((promo: any) => {
           const favourited = isFavourite(promo.id);
           return (
             <TouchableOpacity 
@@ -209,13 +222,8 @@ export default function HomeScreen() {
               onPress={() => handlePromotionPress(promo.id)}
               activeOpacity={0.8}
             >
-              {/* Image */}
               {promo.photoUrl && !promo.photoUrl.startsWith('file://') ? (
-                <Image 
-                  source={{ uri: promo.photoUrl }} 
-                  style={{ width: '100%', height: 160, borderRadius: 16, marginBottom: 12 }}
-                  resizeMode="cover"
-                />
+                <Image source={{ uri: promo.photoUrl }} style={{ width: '100%', height: 160, borderRadius: 16, marginBottom: 12 }} resizeMode="cover" />
               ) : (
                 <View style={{ height: 160, backgroundColor: '#E2E8F0', borderRadius: 16, marginBottom: 12, justifyContent: 'center', alignItems: 'center' }}>
                   <Text style={{ color: '#64748B', fontWeight: '500' }}>📸 No image</Text>
@@ -279,8 +287,4 @@ export default function HomeScreen() {
       </ScrollView>
     </SafeAreaView>
   );
-}
-
-function refreshFavourites() {
-  throw new Error('Function not implemented.');
 }

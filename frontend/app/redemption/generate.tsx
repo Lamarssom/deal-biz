@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Alert, ScrollView, ActivityIndicator, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import Toast from 'react-native-toast-message';
 import { apiService } from '../../services/api';
 
 export default function GenerateQR() {
@@ -14,7 +15,7 @@ export default function GenerateQR() {
     if (promotionId) {
       generateQRCode();
     } else {
-      Alert.alert("Error", "No promotion selected");
+      Toast.show({ type: 'error', text1: 'Error', text2: 'No promotion selected' });
       router.back();
     }
   }, [promotionId]);
@@ -27,7 +28,7 @@ export default function GenerateQR() {
       });
       setQrData(response);
     } catch (error: any) {
-      Alert.alert("Error", error?.message || "Failed to generate QR code");
+      Toast.show({ type: 'error', text1: 'Error', text2: error?.message || 'Failed to generate QR code' });
       router.back();
     } finally {
       setLoading(false);

@@ -5,10 +5,10 @@ import {
   Text, 
   TextInput, 
   TouchableOpacity,
-  Alert 
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather, FontAwesome } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import Logo from '../components/Logo';
 import { Dropdown } from '../components/Dropdown';
 import { signupStyles } from '../styles/signup.styles';
@@ -83,7 +83,7 @@ export default function SignupScreen() {
       const data = await apiService.getStates();
       setStates(data);
     } catch (error) {
-      Alert.alert('Error', 'Failed to load states. Please try again.');
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to load states. Please try again.' });
     } finally {
       setIsLoadingStates(false);
     }
@@ -95,13 +95,12 @@ export default function SignupScreen() {
       const data = await apiService.getLGAs(selectedState);
       setLgas(data);
     } catch (error) {
-      Alert.alert('Error', 'Failed to load LGAs. Please try again.');
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to load LGAs. Please try again.' });
     } finally {
       setIsLoadingLgas(false);
     }
   };
 
-  // Mapbox Address Autocomplete
   const searchAddress = async (text: string) => {
     setAddress(text);
     if (text.length < 3) {
@@ -113,11 +112,7 @@ export default function SignupScreen() {
     try {
       const res = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(text)}.json?` +
-        `access_token=${MAPBOX_TOKEN}&` +
-        `country=NG&` +
-        `types=address,place,locality&` +
-        `proximity=3.3792,6.5244&` +    
-        `limit=8`
+        `access_token=${MAPBOX_TOKEN}&country=NG&types=address,place,locality&proximity=3.3792,6.5244&limit=8`
       );
       const data = await res.json();
       setSuggestions(data.features || []);
@@ -139,12 +134,12 @@ export default function SignupScreen() {
     setSubmitted(true);
 
     if (!role || !name.trim() || !emailRegex.test(email) || password.length < 6 || password !== confirmPassword) {
-      Alert.alert("Validation Error", "Please fill all required fields correctly.");
+      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please fill all required fields correctly.' });
       return;
     }
 
     if (role === 'merchant' && (!businessName.trim() || !category || !state || !lga)) {
-      Alert.alert("Validation Error", "Please fill all merchant information.");
+      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please fill all merchant information.' });
       return;
     }
 
@@ -169,17 +164,14 @@ export default function SignupScreen() {
       const response = await register(payload);
 
       if (response?.user) {
-        Alert.alert("Success", "Account created successfully!", [
-          { text: "Continue", onPress: () => router.replace('/home') }
-        ]);
+        Toast.show({ type: 'success', text1: 'Account created successfully!' });
+        router.replace('/(tabs)/home');
       } else if (response?.message) {
         router.push(`/verify-email?email=${encodeURIComponent(email)}`);
-        Alert.alert("Check Your Email", response.message);
+        Toast.show({ type: 'success', text1: 'Check Your Email', text2: response.message });
       }
     } catch (error: any) {
-      const errorMessage = error?.message || 'Registration failed. Please try again.';
-      Alert.alert("Error", errorMessage);
-      console.log('Registration error:', error);
+      Toast.show({ type: 'error', text1: 'Error', text2: error?.message || 'Registration failed. Please try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -193,7 +185,6 @@ export default function SignupScreen() {
     >
       <View style={{ flex: 1, justifyContent: 'space-between' }}>
         
-        {/* Header */}
         <View style={signupStyles.headerContainer}>
           <Logo width={200} height={80} />
           <Text style={signupStyles.title}>Create Account</Text>
@@ -204,10 +195,8 @@ export default function SignupScreen() {
 
         <View style={signupStyles.formCard}>
           
-          {/* Role Selection */}
           <Text style={signupStyles.label}>I want to sign up as</Text>
           <View style={signupStyles.roleContainer}>
-            
             <TouchableOpacity 
               style={[signupStyles.roleCard, role === 'customer' && signupStyles.roleCardSelected]}
               onPress={() => setRole('customer')}
@@ -223,7 +212,6 @@ export default function SignupScreen() {
               <Feather name="briefcase" size={32} color={role === 'merchant' ? "#1C8EDA" : "#64748B"} style={signupStyles.roleIcon} />
               <Text style={signupStyles.roleTitle}>Merchant</Text>
             </TouchableOpacity>
-
           </View>
 
           {/* Common Fields */}
@@ -273,6 +261,7 @@ export default function SignupScreen() {
                   />
                 </View>
               </View>
+
               <View style={signupStyles.inputGroup}>
                 <Text style={signupStyles.label}>Business Address</Text>
                 <View style={signupStyles.inputWrapper}>
@@ -286,7 +275,6 @@ export default function SignupScreen() {
                   />
                 </View>
 
-                {/* Suggestions Dropdown */}
                 {showSuggestions && suggestions.length > 0 && (
                   <View style={{ 
                     backgroundColor: '#fff', 
@@ -312,6 +300,7 @@ export default function SignupScreen() {
                   </View>
                 )}
               </View>
+
               <View style={signupStyles.inputGroup}>
                 <Dropdown
                   label="Business Category"
@@ -326,11 +315,7 @@ export default function SignupScreen() {
               <View style={signupStyles.inputGroup}>
                 <Dropdown
                   label="State"
-                  options={states.map((s) => ({
-                    id: s.id,
-                    label: s.state,
-                    value: s.state,
-                  }))}
+                  options={states.map((s) => ({ id: s.id, label: s.state, value: s.state }))}
                   value={state}
                   onSelect={setState}
                   placeholder="Select state"
@@ -342,11 +327,7 @@ export default function SignupScreen() {
               <View style={signupStyles.inputGroup}>
                 <Dropdown
                   label="LGA"
-                  options={lgas.map((l) => ({
-                    id: l.id,
-                    label: l.lga,
-                    value: l.lga,
-                  }))}
+                  options={lgas.map((l) => ({ id: l.id, label: l.lga, value: l.lga }))}
                   value={lga}
                   onSelect={setLga}
                   placeholder="Select LGA"
@@ -409,7 +390,6 @@ export default function SignupScreen() {
             {submitted && password !== confirmPassword && <Text style={{color: '#EF4444', fontSize: 12, marginTop: 4}}>Passwords do not match</Text>}
           </View>
 
-          {/* Create Account Button */}
           <TouchableOpacity 
             style={[signupStyles.createButton, isSubmitting && { opacity: 0.6 }]} 
             onPress={handleSignup}
@@ -420,7 +400,6 @@ export default function SignupScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* Social Signup */}
           <Text style={signupStyles.orText}>Or sign up with</Text>
           
           <View style={signupStyles.socialContainer}>
@@ -436,7 +415,6 @@ export default function SignupScreen() {
           </View>
         </View>
 
-        {/* Footer */}
         <View style={signupStyles.footer}>
           <Text style={signupStyles.footerText}>Already have an account? </Text>
           <Text style={signupStyles.loginLink} onPress={() => router.push('/login')}>
