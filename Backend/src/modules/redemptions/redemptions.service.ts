@@ -69,7 +69,7 @@ export class RedemptionsService {
     const redemption = this.redemptionRepo.create({
       promotion,
       promotionId: dto.promotionId,
-      customer: userExists as User,           // type assertion to satisfy relation
+      customer: userExists as User,
       customerId: userId,
       qrCode,
       isRedeemed: false,
@@ -116,6 +116,7 @@ export class RedemptionsService {
 
       console.log(`[Redemption] Adding success fee ₦${successFee} to merchant ${merchant.id}`);
 
+      // Update redeemed count (with safety check)
       const updateResult = await manager
         .createQueryBuilder()
         .update(Promotion)
@@ -126,6 +127,12 @@ export class RedemptionsService {
 
       if (updateResult.affected === 0) {
         throw new BadRequestException('Promotion quantity limit reached');
+      }
+
+      const newRedeemedCount = promotion.redeemedCount + quantity;
+      if (promotion.quantityLimit > 0 && newRedeemedCount >= promotion.quantityLimit) {
+        await manager.update(Promotion, { id: promotion.id }, { isActive: false });
+        console.log(`[Redemption] Promotion ${promotion.id} automatically deactivated (fully redeemed)`);
       }
 
       await manager.update(Redemption, redemption.id, {

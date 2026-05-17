@@ -8,7 +8,8 @@ import {
   ActivityIndicator, 
   Modal,
   Image,
-  Platform
+  Platform,
+  TextInput
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
@@ -26,10 +27,32 @@ export default function PromotionDetail() {
   const [qrGenerated, setQrGenerated] = useState(false);
 
   const [showQuantityModal, setShowQuantityModal] = useState(false);
-  const [selectedQuantity, setSelectedQuantity] = useState(1);
+  const [selectedQuantity, setSelectedQuantity] = useState<number>(1);
 
   const [userLat, setUserLat] = useState<number>(6.5244);
   const [userLng, setUserLng] = useState<number>(3.3792);
+
+  const estimateDriveTime = (distanceKm: number) => {
+    const minutes = Math.round(distanceKm * 3.5);
+    if (minutes < 10) return '< 10 min';
+    if (minutes > 45) return '> 45 min';
+    return `${Math.max(10, Math.round(minutes / 5) * 5)}-${Math.round(minutes / 5) * 5 + 5} min`;
+  };
+
+  const isExpiredOrExhausted = (promo: any) => {
+    if (!promo) return false;
+    const dateExpired = new Date(promo.expiry) < new Date();
+    const quantityExhausted = promo.quantityLimit && (promo.redeemedCount || 0) >= promo.quantityLimit;
+    return dateExpired || quantityExhausted;
+  };
+
+  const getButtonText = (promo: any) => {
+    if (!promo) return 'Generate QR Code';
+    if (promo.quantityLimit && (promo.redeemedCount || 0) >= promo.quantityLimit) {
+      return 'Fully Redeemed';
+    }
+    return 'Promotion Expired';
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -81,10 +104,14 @@ export default function PromotionDetail() {
     }
   };
 
-  const handleGenerateQR = () => setShowQuantityModal(true);
+  const handleGenerateQR = () => {
+    if (isExpiredOrExhausted(promotion)) return;
+    setSelectedQuantity(1);
+    setShowQuantityModal(true);
+  };
 
   const confirmGenerateQR = async () => {
-    if (!promotion) return;
+    if (!promotion || selectedQuantity < 1) return;
     setShowQuantityModal(false);
     
     try {
@@ -97,7 +124,7 @@ export default function PromotionDetail() {
 
       Toast.show({ 
         type: 'success', 
-        text1: '✅ QR Code Generated', 
+        text1: 'QR Code Generated', 
         text2: `Quantity: ${selectedQuantity} × ${promotion.title}` 
       });
     } catch (error: any) {
@@ -120,6 +147,8 @@ export default function PromotionDetail() {
       </View>
     );
   }
+
+  const expiredOrExhausted = isExpiredOrExhausted(promotion);
 
   return (
     <ScrollView style={promotionStyles.container} showsVerticalScrollIndicator={false}>
@@ -149,24 +178,16 @@ export default function PromotionDetail() {
           {promotion.merchant?.businessName}
         </Text>
 
-        {qrGenerated && (
-          <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#E2E8F0' }}>
-            {promotion.merchant?.phoneNumber && (
-              <Text style={{ color: '#10B981', fontWeight: '600', marginBottom: 6 }}>
-                📞 {promotion.merchant.phoneNumber}
-              </Text>
-            )}
-            {promotion.merchant?.address && (
-              <Text style={{ color: '#64748B', marginBottom: 6 }}>
-                📍 {promotion.merchant.address}
-              </Text>
-            )}
-          </View>
-        )}
-
         <Text style={promotionStyles.metaText}>
-          {promotion.distanceKm} km away • Expires {new Date(promotion.expiry).toLocaleDateString('en-NG')}
+          {promotion.distanceKm} km away • {estimateDriveTime(promotion.distanceKm)} • 
+          {promotion.quantityLimit ? `${promotion.quantityLimit - (promotion.redeemedCount || 0)} left` : 'Unlimited'} 
         </Text>
+
+        {!expiredOrExhausted && (
+          <Text style={promotionStyles.metaText}>
+            Expires {new Date(promotion.expiry).toLocaleDateString('en-NG')}
+          </Text>
+        )}
 
         {promotion.description && (
           <Text style={promotionStyles.description}>{promotion.description}</Text>
@@ -175,10 +196,19 @@ export default function PromotionDetail() {
         {user && (
           <TouchableOpacity 
             onPress={handleGenerateQR}
-            style={promotionStyles.button}
+            disabled={expiredOrExhausted}
+            style={[
+              promotionStyles.button, 
+              expiredOrExhausted && { 
+                backgroundColor: '#EF4444', 
+                opacity: 0.7 
+              }
+            ]}
           >
             <Text style={promotionStyles.buttonText}>
-              Generate QR Code
+              {expiredOrExhausted 
+                ? getButtonText(promotion) 
+                : 'Generate QR Code'}
             </Text>
           </TouchableOpacity>
         )}
@@ -209,12 +239,12 @@ export default function PromotionDetail() {
             <Text style={{ fontSize: 22, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
               How many would you like?
             </Text>
-            <Text style={{ textAlign: 'center', color: '#64748B', marginBottom: 24 }}>
+            <Text style={{ textAlign: 'center', color: '#64748B', marginBottom: 20 }}>
               {promotion.title} — ₦{promotion.price} each
             </Text>
 
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginBottom: 24 }}>
-              {[1, 2, 3, 5, 10].map(q => (
+              {[1, 3, 5, 10].map(q => (
                 <TouchableOpacity
                   key={q}
                   onPress={() => setSelectedQuantity(q)}
@@ -233,6 +263,28 @@ export default function PromotionDetail() {
                 </TouchableOpacity>
               ))}
             </View>
+
+            <Text style={{ fontSize: 15, color: '#64748B', marginBottom: 8, textAlign: 'center' }}>
+              Or type any number
+            </Text>
+            <TextInput
+              style={{
+                borderWidth: 1,
+                borderColor: '#1C8EDA',
+                borderRadius: 12,
+                padding: 14,
+                fontSize: 18,
+                textAlign: 'center',
+                marginBottom: 24
+              }}
+              placeholder="Enter quantity"
+              keyboardType="numeric"
+              value={selectedQuantity > 0 ? selectedQuantity.toString() : ''}
+              onChangeText={(text) => {
+                const num = parseInt(text) || 0;
+                setSelectedQuantity(num);
+              }}
+            />
 
             <TouchableOpacity 
               onPress={confirmGenerateQR}

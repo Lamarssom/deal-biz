@@ -8,7 +8,9 @@ interface User {
   id: string;
   email: string;
   role: string;
-  name?: string;
+  name?: string;           // for customers
+  businessName?: string;   // for merchants
+  phoneNumber?: string;    // now added for both roles
 }
 
 interface AuthContextType {
@@ -103,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       await apiService.clearCache();
-      await apiService.removeToken();     // ← Now properly implemented
+      await apiService.removeToken();
       setUser(null);
       setIsSignedIn(false);
       console.log('✅ Logout successful');

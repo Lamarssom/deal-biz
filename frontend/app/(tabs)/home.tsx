@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  ScrollView, 
-  View, 
-  Text, 
-  TouchableOpacity, 
+import {
+  ScrollView,
+  View,
+  Text,
+  TouchableOpacity,
   ActivityIndicator,
   Image,
   RefreshControl,
@@ -49,16 +49,43 @@ export default function HomeScreen() {
     return 'Good evening';
   };
 
-  const openScan = () => router.push('/scan');
+  const getPercentageOff = (promo: any) => {
+    if (!promo.originalPrice || !promo.price) return 0;
+    return Math.round(((promo.originalPrice - promo.price) / promo.originalPrice) * 100);
+  };
 
-  useFocusEffect(
-    useCallback(() => {
-      if (isSignedIn && user) {
-        getUserLocation();
-        refreshFavourites();
-      }
-    }, [isSignedIn, user, refreshFavourites])
-  );
+  const isActivePromotion = (promo: any) => {
+    const expired = new Date(promo.expiry) < new Date();
+    const exhausted = promo.quantityLimit && (promo.redeemedCount || 0) >= promo.quantityLimit;
+    return !expired && !exhausted;
+  };
+
+  const sortByNewest = (promos: any[]) => {
+    return [...promos].sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+  };
+
+  const bestDeals = React.useMemo(() => {
+    return [...promotions]
+      .filter(isActivePromotion)
+      .sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        if (timeB !== timeA) return timeB - timeA;           // Newest first
+        return getPercentageOff(b) - getPercentageOff(a);   // Then highest discount
+      })
+      .slice(0, 5);
+  }, [promotions]);
+
+  const estimateDriveTime = (distanceKm: number) => {
+    const minutes = Math.round(distanceKm * 3.5);
+    if (minutes < 10) return '< 10 min';
+    if (minutes > 45) return '> 45 min';
+    return `${Math.max(10, Math.round(minutes / 5) * 5)}-${Math.round(minutes / 5) * 5 + 5} min`;
+  };
 
   const getUserLocation = async () => {
     if (Platform.OS === 'web') {
@@ -91,28 +118,42 @@ export default function HomeScreen() {
   const loadPromotions = async (lat: number, lng: number) => {
     try {
       const data = await apiService.getNearbyPromotions(lat, lng, 30);
+      //console.log('✅ Loaded promotions count:', data.length);
+
       setPromotions(data);
-      setFilteredPromotions(data);
+      setFilteredPromotions(sortByNewest(data));
       setError(null);
     } catch (error: any) {
       setError("Couldn't load promotions. Check your connection.");
+      //console.error('Load promotions error:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      if (isSignedIn && user) {
+        getUserLocation();
+        refreshFavourites();
+      }
+    }, [isSignedIn, user, refreshFavourites])
+  );
+
   useEffect(() => {
     if (!searchQuery.trim()) {
-      setFilteredPromotions(promotions);
+      setFilteredPromotions(sortByNewest(promotions));
       return;
     }
+
     const query = searchQuery.toLowerCase().trim();
     const filtered = promotions.filter((promo: any) =>
       promo.title?.toLowerCase().includes(query) ||
       promo.merchant?.businessName?.toLowerCase().includes(query) ||
       promo.description?.toLowerCase().includes(query)
     );
-    setFilteredPromotions(filtered);
+
+    setFilteredPromotions(sortByNewest(filtered));
   }, [searchQuery, promotions]);
 
   const onRefresh = async () => {
@@ -120,8 +161,6 @@ export default function HomeScreen() {
     await loadPromotions(lastLat, lastLng);
     setRefreshing(false);
   };
-
-  const goToPromotions = () => router.push('/merchants/promotions');
 
   const handlePromotionPress = (promotionId: string) => {
     router.push({ pathname: '/promotions/[id]', params: { id: promotionId } });
@@ -137,12 +176,12 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={homeStyles.container} edges={['top']}>
-      <ScrollView 
-        style={homeStyles.container} 
+      <ScrollView
+        style={homeStyles.container}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Modern Header with perfectly aligned buttons */}
+        {/* Header */}
         <View style={homeStyles.header}>
           <View>
             <Text style={homeStyles.greeting}>{getGreeting()},</Text>
@@ -150,118 +189,161 @@ export default function HomeScreen() {
           </View>
 
           <View style={{ flexDirection: 'row', gap: 8 }}>
-            {/* Run Promo */}
             {user?.role === 'MERCHANT' && (
-              <TouchableOpacity 
-                style={{
-                  backgroundColor: '#1C8EDA',
-                  height: 48,
-                  paddingHorizontal: 20,
-                  borderRadius: 999,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }} 
-                onPress={goToPromotions}
-              >
-                <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 15 }}>
-                  Run Promo
-                </Text>
-              </TouchableOpacity>
-            )}
+              <>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#1C8EDA',
+                    height: 48,
+                    paddingHorizontal: 20,
+                    borderRadius: 999,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  onPress={() => router.push('/merchants/promotions')}
+                >
+                  <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 15 }}>Run Promo</Text>
+                </TouchableOpacity>
 
-            {/* Modern Scan QR - lighter black, perfect alignment */}
-            {user?.role === 'MERCHANT' && (
-              <TouchableOpacity 
-                style={{
-                  backgroundColor: '#1F2937',
-                  height: 48,
-                  paddingHorizontal: 20,
-                  borderRadius: 999,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                }} 
-                onPress={openScan}
-              >
-                <Feather name="camera" size={20} color="#FFFFFF" />
-                <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 15 }}>Scan QR</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#1F2937',
+                    height: 48,
+                    paddingHorizontal: 20,
+                    borderRadius: 999,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                  }}
+                  onPress={() => router.push('/scan')}
+                >
+                  <Feather name="camera" size={20} color="#FFFFFF" />
+                  <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 15 }}>Scan QR</Text>
+                </TouchableOpacity>
+              </>
             )}
           </View>
         </View>
 
-        {/* Nearby Promotions Header */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 20 }}>
+        {/* Best Deals - Newest First + Highest Discount */}
+        {bestDeals.length > 0 && (
+          <>
+            <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
+              <Text style={[homeStyles.sectionTitle, { color: '#000000' }]}>Best Deals</Text>
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingLeft: 20 }}>
+              {bestDeals.map((promo: any) => {
+                const perc = getPercentageOff(promo);
+                return (
+                  <TouchableOpacity key={promo.id} style={homeStyles.bestDealCard} onPress={() => handlePromotionPress(promo.id)}>
+                    <View style={{ position: 'relative' }}>
+                      {promo.photoUrl ? (
+                        <Image source={{ uri: promo.photoUrl }} style={{ width: '100%', height: 140 }} resizeMode="cover" />
+                      ) : (
+                        <View style={{ height: 140, backgroundColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' }}>
+                          <Text style={{ color: '#64748B' }}>No image</Text>
+                        </View>
+                      )}
+                      {perc > 0 && (
+                        <View style={homeStyles.percentageBadge}>
+                          <Text style={homeStyles.percentageBadgeText}>{perc}% OFF</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <View style={{ padding: 12 }}>
+                      <Text style={{ fontSize: 15, fontWeight: '600', color: '#0F172A' }}>
+                        {promo.merchant?.businessName}
+                      </Text>
+                      <View style={{ flexDirection: 'row', marginTop: 6, gap: 8, alignItems: 'center' }}>
+                        <Text style={{ color: '#1C8EDA', fontWeight: '700', fontSize: 18 }}>
+                          ₦{promo.price}
+                        </Text>
+                        <Text style={{ color: '#64748B', fontSize: 13 }}>
+                          {promo.distanceKm} km • {estimateDriveTime(promo.distanceKm)}
+                        </Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </>
+        )}
+
+        {/* Nearby Promotions */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginTop: 28 }}>
           <Text style={homeStyles.sectionTitle}>Nearby Promotions</Text>
           {locationLoading && <ActivityIndicator color="#1C8EDA" />}
         </View>
 
-        {/* Loading / Error / Empty / List */}
         {loading && <LoadingSkeleton />}
         {error && !loading && <ErrorState message={error} onRetry={() => getUserLocation()} />}
-        {!loading && !error && filteredPromotions.length === 0 && (
-          <EmptyState 
-            icon="search" 
-            title="No promotions found" 
-            subtitle="Try changing your search or location" 
-          />
+        
+        {!loading && !error && filteredPromotions.filter(isActivePromotion).length === 0 && (
+          <EmptyState icon="search" title="No promotions found" subtitle="Try changing your search or location" />
         )}
 
-        {!loading && !error && filteredPromotions.length > 0 && filteredPromotions.map((promo: any) => {
-          const favourited = isFavourite(promo.id);
-          return (
-            <TouchableOpacity 
-              key={promo.id} 
-              style={homeStyles.card}
-              onPress={() => handlePromotionPress(promo.id)}
-              activeOpacity={0.8}
-            >
-              {promo.photoUrl && !promo.photoUrl.startsWith('file://') ? (
-                <Image source={{ uri: promo.photoUrl }} style={{ width: '100%', height: 160, borderRadius: 16, marginBottom: 12 }} resizeMode="cover" />
-              ) : (
-                <View style={{ height: 160, backgroundColor: '#E2E8F0', borderRadius: 16, marginBottom: 12, justifyContent: 'center', alignItems: 'center' }}>
-                  <Text style={{ color: '#64748B', fontWeight: '500' }}>📸 No image</Text>
+        {!loading && !error && filteredPromotions.filter(isActivePromotion).length > 0 && 
+          filteredPromotions.filter(isActivePromotion).map((promo: any) => {
+            const favourited = isFavourite(promo.id);
+            const perc = getPercentageOff(promo);
+
+            return (
+              <TouchableOpacity
+                key={promo.id}
+                style={homeStyles.card}
+                onPress={() => handlePromotionPress(promo.id)}
+                activeOpacity={0.8}
+              >
+                <View style={{ position: 'relative' }}>
+                  {promo.photoUrl ? (
+                    <Image source={{ uri: promo.photoUrl }} style={{ width: '100%', height: 160, borderRadius: 16, marginBottom: 12 }} resizeMode="cover" />
+                  ) : (
+                    <View style={{ height: 160, backgroundColor: '#E2E8F0', borderRadius: 16, marginBottom: 12, justifyContent: 'center', alignItems: 'center' }}>
+                      <Text style={{ color: '#64748B', fontWeight: '500' }}>📸 No image</Text>
+                    </View>
+                  )}
+
+                  {perc > 0 && (
+                    <View style={homeStyles.percentageBadge}>
+                      <Text style={homeStyles.percentageBadgeText}>{perc}% OFF</Text>
+                    </View>
+                  )}
                 </View>
-              )}
 
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ fontSize: 18, fontWeight: '600', color: '#0F172A', flex: 1 }}>
-                  {promo.title}
-                </Text>
-
-                <TouchableOpacity 
-                  onPress={(e) => { 
-                    e.stopPropagation(); 
-                    toggleFavourite(promo.id); 
-                  }}
-                >
-                  <Text style={{ fontSize: 26 }}>
-                    {favourited ? '❤️' : '♡'}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 18, fontWeight: '600', color: '#0F172A', flex: 1 }}>
+                    {promo.merchant?.businessName}
                   </Text>
-                </TouchableOpacity>
-              </View>
 
-              <Text style={{ color: '#64748B', marginTop: 4 }}>
-                {promo.merchant?.businessName} • {promo.distanceKm} km away
-              </Text>
+                  <TouchableOpacity
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      toggleFavourite(promo.id);
+                    }}
+                  >
+                    <Text style={{ fontSize: 26 }}>
+                      {favourited ? '❤️' : '♡'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
 
-              <View style={{ flexDirection: 'row', marginTop: 8, gap: 8 }}>
-                <Text style={{ color: '#1C8EDA', fontWeight: '700', fontSize: 18 }}>
-                  ₦{promo.price}
+                <Text style={{ color: '#64748B', marginTop: 4 }}>
+                  {promo.distanceKm} km • {estimateDriveTime(promo.distanceKm)}
                 </Text>
-                <Text style={{ textDecorationLine: 'line-through', color: '#94A3B8' }}>
-                  ₦{promo.originalPrice}
-                </Text>
-              </View>
 
-              <Text style={{ color: '#10B981', marginTop: 8, fontWeight: '600' }}>
-                Expires: {new Date(promo.expiry).toLocaleDateString('en-NG')}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+                <View style={{ flexDirection: 'row', marginTop: 8, gap: 8 }}>
+                  <Text style={{ color: '#1C8EDA', fontWeight: '700', fontSize: 18 }}>
+                    ₦{promo.price}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
       </ScrollView>
     </SafeAreaView>
   );

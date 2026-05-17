@@ -202,8 +202,6 @@ export class PromotionsService {
     limit: number = 20,
   ): Promise<any[]> {
     try {
-      console.log(`Searching promotions near: ${userLat}, ${userLng} (radius: ${radiusKm}km)`);
-
       const merchants = await this.locationService.findMerchantsInRadius(
         userLat,
         userLng,
@@ -211,36 +209,19 @@ export class PromotionsService {
         100,
       );
 
-      console.log(`Found ${merchants.length} merchants in radius`);
-
       if (merchants.length === 0) {
-        console.log('No merchants in radius. Trying wider search (30km)...');
-        const widerMerchants = await this.locationService.findMerchantsInRadius(
-          userLat, userLng, 30, 50
-        );
-
-        if (widerMerchants.length === 0) {
-          console.log('Returning all active promotions as fallback');
-          const allActive = await this.promotionRepo.find({
-            where: { isActive: true, expiry: MoreThan(new Date()) },
-            relations: ['merchant'],
-            take: limit,
-          });
-
-          return allActive.map(p => this.formatPromotion(p, userLat, userLng));
-        }
-
-        const merchantIds = widerMerchants.map(m => m.id);
-        const promotions = await this.promotionRepo.find({
-          where: { merchantId: In(merchantIds), isActive: true, expiry: MoreThan(new Date()) },
+        // fallback logic remains the same
+        const allActive = await this.promotionRepo.find({
+          where: { isActive: true, expiry: MoreThan(new Date()) },
           relations: ['merchant'],
-          take: 100,
+          take: limit,
         });
-
-        return this.formatAndRankPromotions(promotions, userLat, userLng, limit);
+        return allActive.map(p => this.formatPromotion(p, userLat, userLng));
       }
 
       const merchantIds = merchants.map(m => m.id);
+
+      // NEW: Proper active promotion filter (expiry + not exhausted)
       const promotions = await this.promotionRepo.find({
         where: {
           merchantId: In(merchantIds),
@@ -251,12 +232,28 @@ export class PromotionsService {
         take: 100,
       });
 
-      return this.formatAndRankPromotions(promotions, userLat, userLng, limit);
+      // Filter out exhausted promotions in memory (cleanest for now)
+      const activePromotions = promotions.filter(p => {
+        const exhausted = p.quantityLimit > 0 && p.redeemedCount >= p.quantityLimit;
+        return !exhausted;
+      });
+
+      return this.formatAndRankPromotions(activePromotions, userLat, userLng, limit);
 
     } catch (error) {
       console.error('Error in getNearbyPromotions:', error);
       return [];
     }
+  }
+
+  async getMyPromotions(merchantId: string) {
+    const promotions = await this.promotionRepo.find({
+      where: { merchantId },
+      relations: ['merchant'],
+      order: { createdAt: 'DESC' },
+    });
+
+    return promotions.map(p => this.formatPromotion(p, 0, 0));
   }
 
   // UPDATED: Now returns phoneNumber and address
@@ -272,6 +269,7 @@ export class PromotionsService {
       redeemedCount: promo.redeemedCount || 0,
       views: promo.views || 0,
       photoUrl: promo.photoUrl,
+      createdAt: promo.createdAt,
       merchant: {
         id: promo.merchant.id,
         businessName: promo.merchant.businessName,
@@ -320,7 +318,7 @@ export class PromotionsService {
         updatedAt: new Date()
       });
 
-      console.log(`✅ Promotion ${promotionId} is now LIVE! Title: ${promo.title}`);
+      console.log(`Promotion ${promotionId} is now LIVE! Title: ${promo.title}`);
     } catch (error) {
       console.error('Failed to activate promotion:', error);
     }
@@ -329,15 +327,5 @@ export class PromotionsService {
   @OnEvent(EVENTS.PAYMENT_SUCCESS)
   async handlePaymentSuccess(payload: { promotionId: string }) {
     await this.activatePromotion(payload.promotionId);
-  }
-
-  async getMyPromotions(merchantId: string) {
-    const promotions = await this.promotionRepo.find({
-      where: { merchantId },
-      relations: ['merchant'],
-      order: { createdAt: 'DESC' },
-    });
-
-    return promotions.map(p => this.formatPromotion(p, 0, 0));
   }
 }

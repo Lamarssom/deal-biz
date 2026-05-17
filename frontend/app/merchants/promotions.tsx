@@ -47,6 +47,7 @@ export default function MerchantPromotionsScreen() {
   const [showPaymentWebView, setShowPaymentWebView] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string>('');
 
+  // Max 7 days from today
   const today = new Date();
   const maxExpiryDate = new Date();
   maxExpiryDate.setDate(maxExpiryDate.getDate() + 7);
@@ -57,7 +58,7 @@ export default function MerchantPromotionsScreen() {
     price: 0,
     originalPrice: 0,
     expiry: maxExpiryDate.toISOString(),
-    quantityLimit: 10,
+    quantityLimit: 0,
     description: "",
     photoUrl: "",
   });
@@ -103,8 +104,9 @@ export default function MerchantPromotionsScreen() {
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (selectedDate) {
+      // Enforce max 7 days
       if (selectedDate > maxExpiryDate) {
-        Toast.show({ type: 'error', text1: 'Limit Reached', text2: 'Promotions cannot exceed 7 days.' });
+        Toast.show({ type: 'error', text1: 'Limit Reached', text2: 'Promotions cannot exceed 7 days from today.' });
         return;
       }
       setFormData(prev => ({ ...prev, expiry: selectedDate.toISOString() }));
@@ -112,7 +114,7 @@ export default function MerchantPromotionsScreen() {
   };
 
   const handleCreatePromotion = async () => {
-    if (!formData.title?.trim() || formData.price <= 0 || formData.originalPrice <= 0) {
+    if (!formData.title?.trim() || formData.price <= 0 || formData.originalPrice <= 0 || formData.quantityLimit <= 0) {
       Toast.show({ type: 'error', text1: 'Error', text2: 'Please fill all required fields correctly' });
       return;
     }
@@ -165,7 +167,7 @@ export default function MerchantPromotionsScreen() {
     if (navState.url.includes('success') || navState.url.includes('callback')) {
       setTimeout(() => {
         setShowPaymentWebView(false);
-        Toast.show({ type: 'success', text1: '✅ Settlement Successful!', text2: 'Your balance has been updated.' });
+        Toast.show({ type: 'success', text1: 'Settlement Successful!', text2: 'Your balance has been updated.' });
         refreshAnalytics();
         setActiveTab('overview');
       }, 1500);
@@ -259,7 +261,7 @@ export default function MerchantPromotionsScreen() {
         </>
       )}
 
-      {/* CREATE TAB */}
+      {/* CREATE TAB - Reverted to DateTimePicker with 7-day max */}
       {activeTab === 'create' && (
         <View style={promotionsStyles.card}>
           <Text style={{ fontSize: 20, fontWeight: '700', marginBottom: 20 }}>Create New Promotion</Text>
@@ -323,19 +325,24 @@ export default function MerchantPromotionsScreen() {
           <Text style={promotionsStyles.label}>Quantity Limit *</Text>
           <TextInput
             style={promotionsStyles.input}
-            placeholder="10"
+            placeholder="e.g. 15 (how many items can be redeemed)"
             keyboardType="numeric"
-            value={formData.quantityLimit.toString()}
-            onChangeText={(text) => setFormData({ ...formData, quantityLimit: Number(text) || 10 })}
+            value={formData.quantityLimit ? formData.quantityLimit.toString() : ''}
+            onChangeText={(text) => setFormData({ ...formData, quantityLimit: Number(text) || 0 })}
           />
 
-          <Text style={promotionsStyles.label}>Expiry Date (Max 7 days)</Text>
+          <Text style={promotionsStyles.label}>Expiry Date (max 7 days from today)</Text>
           <TouchableOpacity 
             style={[promotionsStyles.input, { justifyContent: 'center' }]} 
             onPress={() => setShowDatePicker(true)}
           >
             <Text style={{ fontSize: 16 }}>
-              {new Date(formData.expiry).toLocaleDateString('en-NG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              {new Date(formData.expiry).toLocaleDateString('en-NG', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
             </Text>
           </TouchableOpacity>
 
@@ -362,7 +369,7 @@ export default function MerchantPromotionsScreen() {
         </View>
       )}
 
-      {/* MY PROMOTIONS TAB */}
+      {/* MY PROMOTIONS TAB - Improved status logic */}
       {activeTab === 'my' && (
         <View style={{ paddingHorizontal: 20 }}>
           <Text style={{ fontSize: 20, fontWeight: '700', marginBottom: 16 }}>My Promotions</Text>
@@ -379,34 +386,44 @@ export default function MerchantPromotionsScreen() {
             />
           )}
 
-          {!myPromotionsLoading && !myPromotionsError && myPromotions.map((promo) => (
-            <View key={promo.id} style={promotionsStyles.card}>
-              <Text style={{ fontSize: 18, fontWeight: '600' }}>{promo.title}</Text>
-              <Text style={{ color: '#64748B' }}>
-                {promo.merchant?.businessName || 'Your Business'}
-              </Text>
+          {!myPromotionsLoading && !myPromotionsError && myPromotions.map((promo) => {
+            const isExpired = new Date(promo.expiry) < new Date();
+            const isFullyRedeemed = promo.quantityLimit && promo.redeemedCount >= promo.quantityLimit;
 
-              <View style={{ flexDirection: 'row', marginVertical: 12, gap: 12 }}>
-                <Text style={{ color: '#1C8EDA', fontWeight: '700', fontSize: 22 }}>
-                  ₦{promo.price}
+            return (
+              <View key={promo.id} style={promotionsStyles.card}>
+                <Text style={{ fontSize: 18, fontWeight: '600' }}>{promo.title}</Text>
+                <Text style={{ color: '#64748B' }}>
+                  {promo.merchant?.businessName || 'Your Business'}
                 </Text>
-                <Text style={{ textDecorationLine: 'line-through', color: '#94A3B8', fontSize: 18 }}>
-                  ₦{promo.originalPrice}
+
+                <View style={{ flexDirection: 'row', marginVertical: 12, gap: 12 }}>
+                  <Text style={{ color: '#1C8EDA', fontWeight: '700', fontSize: 22 }}>
+                    ₦{promo.price}
+                  </Text>
+                  <Text style={{ textDecorationLine: 'line-through', color: '#94A3B8', fontSize: 18 }}>
+                    ₦{promo.originalPrice}
+                  </Text>
+                </View>
+
+                <Text style={{ color: '#10B981', fontWeight: '600' }}>
+                  Expires: {new Date(promo.expiry).toLocaleDateString('en-NG')}
+                </Text>
+
+                <Text style={{ 
+                  marginTop: 8, 
+                  color: (isExpired || isFullyRedeemed) ? '#EF4444' : '#10B981',
+                  fontWeight: '600'
+                }}>
+                  {(isExpired || isFullyRedeemed) ? 'Expired' : 'Active'}
+                </Text>
+
+                <Text style={{ color: '#64748B', fontSize: 13 }}>
+                  Redeemed: {promo.redeemedCount || 0} / {promo.quantityLimit || '∞'}
                 </Text>
               </View>
-
-              <Text style={{ color: '#10B981', fontWeight: '600' }}>
-                Expires: {new Date(promo.expiry).toLocaleDateString('en-NG')}
-              </Text>
-
-              <Text style={{ marginTop: 8, color: promo.isActive ? '#10B981' : '#EF4444' }}>
-                {promo.isActive ? 'Active' : 'Expired'}
-              </Text>
-              <Text style={{ color: '#64748B', fontSize: 13 }}>
-                Redeemed: {promo.redeemedCount || 0} / {promo.quantityLimit || '∞'}
-              </Text>
-            </View>
-          ))}
+            );
+          })}
         </View>
       )}
 

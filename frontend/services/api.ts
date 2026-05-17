@@ -345,6 +345,18 @@ class ApiService {
       console.log('Error removing token:', error);
     }
   }
+
+  async changePassword(oldPassword: string, newPassword: string) {
+    return this.request<any>('/auth/change-password', 'POST', { oldPassword, newPassword }, true);
+  }
+
+  async updatePhoneNumber(phoneNumber: string) {
+    return this.request<any>('/auth/update-phone', 'POST', { phoneNumber }, true);
+  }
+
+  async getProfile() {
+    return this.request<any>('/auth/profile', 'GET', undefined, true);
+  }
 }
 
 export const apiService = new ApiService();

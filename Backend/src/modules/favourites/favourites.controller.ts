@@ -9,16 +9,16 @@ export class FavouritesController {
 
   @Get()
   getMyFavourites(@Req() req: any) {
-    return this.favouritesService.getMyFavourites(req.user.id);
+    return this.favouritesService.getMyFavourites(req.user.id, req.user.role);
   }
 
   @Post(':promotionId')
   addFavourite(@Req() req: any, @Param('promotionId') promotionId: string) {
-    return this.favouritesService.addFavourite(req.user.id, promotionId);
+    return this.favouritesService.addFavourite(req.user.id, req.user.role, promotionId);
   }
 
   @Delete(':promotionId')
   removeFavourite(@Req() req: any, @Param('promotionId') promotionId: string) {
-    return this.favouritesService.removeFavourite(req.user.id, promotionId);
+    return this.favouritesService.removeFavourite(req.user.id, req.user.role, promotionId);
   }
 }

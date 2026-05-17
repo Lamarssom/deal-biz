@@ -12,6 +12,8 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UsersService } from '../users/users.service';
 import { MerchantsService } from '../merchants/merchants.service';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdatePhoneDto } from './dto/update-phone.dto';
 
 @Injectable()
 export class AuthService {
@@ -204,5 +206,49 @@ export class AuthService {
     await this.merchantsService.update({ id: payload.sub }, { password: hashed }).catch(() => {});
 
     return { message: 'Password reset successfully' };
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const email = await this.getUserEmail(userId); 
+    let entity: User | Merchant | null = await this.usersService.findOne(email);
+    if (!entity) entity = await this.merchantsService.findOne(email);
+
+    if (!entity || !(await bcrypt.compare(dto.oldPassword, entity.password))) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const hashed = await bcrypt.hash(dto.newPassword, 10);
+
+    if (entity instanceof User) {
+      await this.usersService.update({ id: userId }, { password: hashed });
+    } else {
+      await this.merchantsService.update({ id: userId }, { password: hashed });
+    }
+
+    return { message: 'Password changed successfully' };
+  }
+
+  async updatePhoneNumber(userId: string, dto: UpdatePhoneDto) {
+    let entity: User | Merchant | null = await this.usersService.findById(userId);
+    if (!entity) entity = await this.merchantsService.findById(userId);
+
+    if (!entity) throw new BadRequestException('User not found');
+
+    if (entity instanceof User) {
+      await this.usersService.update({ id: userId }, { phoneNumber: dto.phoneNumber });
+    } else {
+      await this.merchantsService.update({ id: userId }, { phoneNumber: dto.phoneNumber });
+    }
+
+    return { message: 'Phone number updated successfully' };
+  }
+
+  // Small helper
+  private async getUserEmail(userId: string): Promise<string> {
+    const user = await this.usersService.findById(userId);
+    if (user) return user.email;
+    const merchant = await this.merchantsService.findById(userId);
+    if (merchant) return merchant.email;
+    throw new BadRequestException('User not found');
   }
 }

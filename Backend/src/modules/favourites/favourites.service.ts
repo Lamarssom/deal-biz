@@ -14,27 +14,44 @@ export class FavouritesService {
     private promotionRepo: Repository<Promotion>,
   ) {}
 
-  async getMyFavourites(userId: string) {
+  async getMyFavourites(ownerId: string, role: 'CUSTOMER' | 'MERCHANT') {
+    const where = role === 'MERCHANT' 
+      ? { merchantId: ownerId } 
+      : { userId: ownerId };
+
     return this.favouriteRepo.find({
-      where: { userId },
+      where,
       relations: ['promotion', 'promotion.merchant'],
       order: { createdAt: 'DESC' },
     });
   }
 
-  async addFavourite(userId: string, promotionId: string) {
-    // Check if already favourited
-    const existing = await this.favouriteRepo.findOne({ where: { userId, promotionId } });
+  async addFavourite(ownerId: string, role: 'CUSTOMER' | 'MERCHANT', promotionId: string) {
+    const existing = await this.favouriteRepo.findOne({
+      where: role === 'MERCHANT' 
+        ? { merchantId: ownerId, promotionId } 
+        : { userId: ownerId, promotionId }
+    });
+
     if (existing) return { message: 'Already in favourites' };
 
-    const favourite = this.favouriteRepo.create({ userId, promotionId });
-    await this.favouriteRepo.save(favourite);
+    const favourite = this.favouriteRepo.create(
+      role === 'MERCHANT' 
+        ? { merchantId: ownerId, promotionId } 
+        : { userId: ownerId, promotionId }
+    );
 
+    await this.favouriteRepo.save(favourite);
     return { message: 'Added to favourites' };
   }
 
-  async removeFavourite(userId: string, promotionId: string) {
-    const result = await this.favouriteRepo.delete({ userId, promotionId });
+  async removeFavourite(ownerId: string, role: 'CUSTOMER' | 'MERCHANT', promotionId: string) {
+    const result = await this.favouriteRepo.delete(
+      role === 'MERCHANT' 
+        ? { merchantId: ownerId, promotionId } 
+        : { userId: ownerId, promotionId }
+    );
+
     if (result.affected === 0) throw new NotFoundException('Favourite not found');
     return { message: 'Removed from favourites' };
   }

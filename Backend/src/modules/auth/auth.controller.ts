@@ -8,6 +8,8 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { UpdatePhoneDto } from './dto/update-phone.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -48,5 +50,17 @@ export class AuthController {
   @Get('profile')
   profile(@Req() req: any) {
     return req.user;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('change-password')
+  changePassword(@Req() req: any, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(req.user.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('update-phone')
+  updatePhone(@Req() req: any, @Body() dto: UpdatePhoneDto) {
+    return this.authService.updatePhoneNumber(req.user.id, dto);
   }
 }

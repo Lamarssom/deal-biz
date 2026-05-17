@@ -45,10 +45,10 @@ export default function ScanScreen() {
       await refreshAnalytics();
 
       const analytics = await apiService.getMerchantAnalytics();
-      console.log('🔥 [SCAN] Merchant analytics after redemption:', JSON.stringify(analytics, null, 2));
+      //console.log('[SCAN] Merchant analytics after redemption:', JSON.stringify(analytics, null, 2));
 
       Alert.alert(
-        '✅ Redemption Successful!',
+        'Redemption Successful!',
         `Promotion redeemed.\n3% fee (₦${response.successFeeCharged || '405'}) added to balance.`,
         [
           {

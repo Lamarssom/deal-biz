@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 export const homeStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E6ECF5',   // darker, cleaner slate
+    backgroundColor: '#E6ECF5',
   },
   header: {
     flexDirection: 'row',
@@ -22,46 +22,6 @@ export const homeStyles = StyleSheet.create({
     fontWeight: '700',
     color: '#0F172A',
     marginTop: 4,
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-    gap: 8,
-  },
-  logoutButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#FFFFFF',
-    minWidth: 90,
-  },
-  logoutText: {
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  searchContainer: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 999,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 16,
   },
   sectionTitle: {
     fontSize: 20,
@@ -82,11 +42,41 @@ export const homeStyles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 4,
   },
-  dealCard: {
+
+  percentageBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
     backgroundColor: '#1C8EDA',
-    borderRadius: 24,
-    padding: 20,
-    marginHorizontal: 20,
-    marginBottom: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 6,
+    transform: [{ rotate: '-8deg' }],
+    shadowColor: '#000',
+    shadowOffset: { width: 3, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 6,
+    zIndex: 10,
+  },
+  percentageBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+
+  /* Best Deals card (horizontal) */
+  bestDealCard: {
+    width: 220,
+    marginRight: 16,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
 });
