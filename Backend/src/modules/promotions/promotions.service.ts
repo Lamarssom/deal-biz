@@ -22,6 +22,7 @@ import { calculateHaversineDistance } from '../../common/utils/haversine';
 
 @Injectable()
 export class PromotionsService {
+  [x: string]: any;
   constructor(
     @InjectRepository(Promotion)
     private promotionRepo: Repository<Promotion>,
@@ -327,5 +328,46 @@ export class PromotionsService {
   @OnEvent(EVENTS.PAYMENT_SUCCESS)
   async handlePaymentSuccess(payload: { promotionId: string }) {
     await this.activatePromotion(payload.promotionId);
+  }
+
+  async updatePromotionQuantity(
+    merchantId: string,
+    promotionId: string,
+    newQuantityLimit: number,
+  ) {
+    const promotion = await this.promotionRepo.findOne({
+      where: { id: promotionId, merchantId },
+    });
+
+    if (!promotion) {
+      throw new NotFoundException('Promotion not found or you do not own it');
+    }
+
+    // 1. Cannot go below already redeemed
+    if (newQuantityLimit < promotion.redeemedCount) {
+      throw new BadRequestException(
+        `New quantity limit cannot be lower than already redeemed count (${promotion.redeemedCount})`,
+      );
+    }
+
+    // 2. ONLY ALLOW REDUCTION (strictly lower)
+    if (newQuantityLimit >= promotion.quantityLimit) {
+      throw new BadRequestException(
+        'You can only reduce the quantity limit. Increasing it or keeping the same value is not allowed.',
+      );
+    }
+
+    // Perform the update
+    await this.promotionRepo.update(promotionId, {
+      quantityLimit: newQuantityLimit,
+      updatedAt: new Date(),
+    });
+
+    return {
+      message: 'Quantity limit reduced successfully (this action cannot be undone)',
+      promotionId,
+      previousQuantity: promotion.quantityLimit,
+      newQuantityLimit,
+    };
   }
 }

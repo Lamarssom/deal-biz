@@ -173,9 +173,9 @@ class ApiService {
     return this.user?.id ? `${baseKey}_${this.user.id}` : baseKey;
   }
 
-  private async request<T>(
+    private async request<T>(
     endpoint: string,
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
     body?: any,
     isAuth: boolean = false,
     cacheKeyBase?: string
@@ -275,6 +275,15 @@ class ApiService {
     return this.request<any[]>('/promotions/my', 'GET', undefined, true, '@deal_biz_cache_promotions');
   }
 
+    async updatePromotionQuantity(promotionId: string, quantityLimit: number): Promise<any> {
+    return this.request<any>(
+      `/promotions/${promotionId}/quantity`,
+      'PATCH',
+      { quantityLimit },
+      true
+    );
+  }
+
   async getMerchantAnalytics(): Promise<any> {
     return this.request<any>('/analytics/merchant', 'GET', undefined, true, '@deal_biz_cache_analytics');
   }
@@ -357,6 +366,7 @@ class ApiService {
   async getProfile() {
     return this.request<any>('/auth/profile', 'GET', undefined, true);
   }
+  
 }
 
 export const apiService = new ApiService();

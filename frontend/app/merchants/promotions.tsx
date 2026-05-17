@@ -47,6 +47,10 @@ export default function MerchantPromotionsScreen() {
   const [showPaymentWebView, setShowPaymentWebView] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState<string>('');
 
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedPromo, setSelectedPromo] = useState<any>(null);
+  const [newQuantityLimit, setNewQuantityLimit] = useState(0);
+
   // Max 7 days from today
   const today = new Date();
   const maxExpiryDate = new Date();
@@ -87,6 +91,71 @@ export default function MerchantPromotionsScreen() {
     setMyPromotionsError(null);
     loadMyPromotions();
   };
+
+  const openEditModal = (promo: any) => {
+    const isExpired = new Date(promo.expiry) < new Date();
+    const isFullyRedeemed = promo.quantityLimit && promo.redeemedCount >= promo.quantityLimit;
+
+    if (isExpired || isFullyRedeemed) {
+      Toast.show({
+        type: 'error',
+        text1: 'Cannot Edit',
+        text2: isFullyRedeemed ? 'This promotion is fully redeemed' : 'This promotion has expired'
+      });
+      return;
+    }
+
+    setSelectedPromo(promo);
+    setNewQuantityLimit(promo.quantityLimit);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateQuantity = async () => {
+    if (!selectedPromo) return;
+
+    // Prevent going below redeemed count
+    if (newQuantityLimit < selectedPromo.redeemedCount) {
+      Toast.show({ 
+        type: 'error', 
+        text1: 'Invalid Quantity', 
+        text2: `Cannot set below redeemed count (${selectedPromo.redeemedCount})` 
+      });
+      return;
+    }
+
+    // NEW: Only allow reduction (strictly less than current)
+    if (newQuantityLimit >= selectedPromo.quantityLimit) {
+      Toast.show({ 
+        type: 'error', 
+        text1: 'Cannot Increase', 
+        text2: 'You can only reduce the quantity limit, not increase or keep it the same.' 
+      });
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await apiService.updatePromotionQuantity(selectedPromo.id, newQuantityLimit);
+      
+      Toast.show({ 
+        type: 'success', 
+        text1: 'Quantity Reduced!', 
+        text2: `From ${selectedPromo.quantityLimit} → ${newQuantityLimit} (permanent)` 
+      });
+      
+      setShowEditModal(false);
+      loadMyPromotions(); // Refresh list
+    } catch (error: any) {
+      Toast.show({ 
+        type: 'error', 
+        text1: 'Update Failed', 
+        text2: error?.message || 'Could not update quantity' 
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+  
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -369,7 +438,7 @@ export default function MerchantPromotionsScreen() {
         </View>
       )}
 
-      {/* MY PROMOTIONS TAB - Improved status logic */}
+            {/* MY PROMOTIONS TAB */}
       {activeTab === 'my' && (
         <View style={{ paddingHorizontal: 20 }}>
           <Text style={{ fontSize: 20, fontWeight: '700', marginBottom: 16 }}>My Promotions</Text>
@@ -389,7 +458,6 @@ export default function MerchantPromotionsScreen() {
           {!myPromotionsLoading && !myPromotionsError && myPromotions.map((promo) => {
             const isExpired = new Date(promo.expiry) < new Date();
             const isFullyRedeemed = promo.quantityLimit && promo.redeemedCount >= promo.quantityLimit;
-
             return (
               <View key={promo.id} style={promotionsStyles.card}>
                 <Text style={{ fontSize: 18, fontWeight: '600' }}>{promo.title}</Text>
@@ -406,9 +474,11 @@ export default function MerchantPromotionsScreen() {
                   </Text>
                 </View>
 
-                <Text style={{ color: '#10B981', fontWeight: '600' }}>
-                  Expires: {new Date(promo.expiry).toLocaleDateString('en-NG')}
-                </Text>
+                {!isExpired && !isFullyRedeemed && (
+                  <Text style={{ color: '#10B981', fontWeight: '600' }}>
+                    Expires: {new Date(promo.expiry).toLocaleDateString('en-NG')}
+                  </Text>
+                )}
 
                 <Text style={{ 
                   marginTop: 8, 
@@ -421,11 +491,113 @@ export default function MerchantPromotionsScreen() {
                 <Text style={{ color: '#64748B', fontSize: 13 }}>
                   Redeemed: {promo.redeemedCount || 0} / {promo.quantityLimit || '∞'}
                 </Text>
+
+                {/* EDIT BUTTON */}
+                <TouchableOpacity 
+                  style={{
+                    marginTop: 12,
+                    paddingVertical: 10,
+                    borderWidth: 1,
+                    borderColor: (isExpired || isFullyRedeemed) ? '#EF4444' : '#1C8EDA',
+                    borderRadius: 999,
+                    alignItems: 'center',
+                    opacity: (isExpired || isFullyRedeemed) ? 0.6 : 1
+                  }}
+                  onPress={() => openEditModal(promo)}
+                  disabled={isExpired || isFullyRedeemed}
+                >
+                  <Text style={{ color: '#1C8EDA', fontWeight: '600' }}>Edit Remaining Quantity</Text>
+                </TouchableOpacity>
               </View>
             );
           })}
         </View>
       )}
+
+            {/* EDIT QUANTITY MODAL - HALF SCREEN */}
+      <Modal
+        visible={showEditModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <View style={{
+          flex: 1,
+          justifyContent: 'flex-end',
+          backgroundColor: 'rgba(0, 0, 0, 0.5)', // dark overlay
+        }}>
+          <View style={{
+            backgroundColor: '#fff',
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            padding: 24,
+            maxHeight: '62%',           // ← tweak this if you want it taller/shorter
+          }}>
+            <Text style={{ fontSize: 22, fontWeight: '700', marginBottom: 20 }}>
+              Reduce Quantity Limit
+            </Text>
+
+            {selectedPromo && (
+              <>
+                <Text style={{ fontSize: 16, color: '#64748B', marginBottom: 8 }}>
+                  Promotion: <Text style={{ fontWeight: '600', color: '#0F172A' }}>{selectedPromo.title}</Text>
+                </Text>
+
+                <Text style={{ fontSize: 16, color: '#64748B', marginBottom: 8 }}>
+                  Currently Redeemed: <Text style={{ fontWeight: '600' }}>{selectedPromo.redeemedCount}</Text>
+                </Text>
+
+                <Text style={{ fontSize: 16, color: '#64748B', marginBottom: 20 }}>
+                  Current Quantity Limit: <Text style={{ fontWeight: '700', color: '#0F172A' }}>{selectedPromo.quantityLimit}</Text>
+                </Text>
+
+                {/* WARNING */}
+                <View style={{
+                  backgroundColor: '#FEE2E2',
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 24,
+                  borderLeftWidth: 4,
+                  borderLeftColor: '#EF4444'
+                }}>
+                  <Text style={{ color: '#B91C1C', fontWeight: '600', fontSize: 15 }}>
+                    ⚠️ This action cannot be undone
+                  </Text>
+                  <Text style={{ color: '#B91C1C', marginTop: 4, lineHeight: 20 }}>
+                    Once you reduce the quantity limit, you cannot increase it again.
+                  </Text>
+                </View>
+
+                <Text style={promotionsStyles.label}>New Quantity Limit (must be lower)</Text>
+                <TextInput
+                  style={promotionsStyles.input}
+                  keyboardType="numeric"
+                  value={newQuantityLimit.toString()}
+                  onChangeText={(text) => setNewQuantityLimit(Number(text) || 0)}
+                  placeholder={`Less than ${selectedPromo.quantityLimit}`}
+                />
+
+                <TouchableOpacity 
+                  style={[promotionsStyles.actionButton, { marginTop: 24 }]} 
+                  onPress={handleUpdateQuantity}
+                  disabled={actionLoading}
+                >
+                  <Text style={promotionsStyles.actionButtonText}>
+                    {actionLoading ? "Reducing..." : "Confirm Reduction"}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={{ marginTop: 16, alignItems: 'center' }}
+                  onPress={() => setShowEditModal(false)}
+                >
+                  <Text style={{ color: '#64748B' }}>Cancel</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* Payment Modal */}
       <Modal

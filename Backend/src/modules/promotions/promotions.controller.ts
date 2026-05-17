@@ -7,6 +7,8 @@ import {
   Req,
   Get,
   Query,
+  Param,
+  Patch,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
@@ -15,6 +17,7 @@ import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { UpdateQuantityDto } from './dto/update-quantity.dto';
 
 @ApiTags('Promotions')
 @ApiBearerAuth()
@@ -55,5 +58,20 @@ export class PromotionsController {
     const radiusKm = parseFloat(radius);
 
     return this.promotionsService.getNearbyPromotions(latitude, longitude, radiusKm);
+  }
+
+    @Patch(':id/quantity')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('MERCHANT')
+  async updateQuantity(
+    @Req() req: any,
+    @Param('id') promotionId: string,
+    @Body() dto: UpdateQuantityDto,
+  ) {
+    return this.promotionsService.updatePromotionQuantity(
+      req.user.id,
+      promotionId,
+      dto.quantityLimit,
+    );
   }
 }
