@@ -10,10 +10,16 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Feather, FontAwesome } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import Toast from 'react-native-toast-message';
 import Logo from '../components/Logo';
 import { loginStyles } from '../styles/login.styles';
 import { useAuth } from '../context/AuthContext';
+import { apiService } from '@/services/api';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -29,35 +35,26 @@ export default function LoginScreen() {
 
   const { login } = useAuth();
 
+  
   useEffect(() => {
     if (paramEmail) setEmail(paramEmail);
   }, [paramEmail]);
 
+
+
   const handleLogin = async () => {
     setSubmitted(true);
-    
     if (!emailRegex.test(email) || password.length < 6) {
-      Toast.show({ 
-        type: 'error', 
-        text1: 'Validation Error', 
-        text2: 'Please enter valid email and password' 
-      });
+      Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please enter valid email and password' });
       return;
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
-
     setIsLoggingIn(true);
     try {
-      await login(normalizedEmail, password);
+      await login(email.trim().toLowerCase(), password);
       Toast.show({ type: 'success', text1: 'Login Successful!' });
-      router.replace('/(tabs)/home');
     } catch (error: any) {
-      Toast.show({ 
-        type: 'error', 
-        text1: 'Login Failed', 
-        text2: error?.message || 'Invalid credentials' 
-      });
+      Toast.show({ type: 'error', text1: 'Login Failed', text2: error?.message || 'Invalid credentials' });
     } finally {
       setIsLoggingIn(false);
     }
@@ -87,6 +84,7 @@ export default function LoginScreen() {
           <Text style={loginStyles.subtitle}>Login to your account</Text>
 
           <View style={loginStyles.formCard}>
+            {/* Email & Password */}
             <View style={loginStyles.inputContainer}>
               <Text style={loginStyles.label}>Email</Text>
               <View style={loginStyles.inputWrapper}>
@@ -101,16 +99,10 @@ export default function LoginScreen() {
                   placeholderTextColor="#94A3B8"
                 />
               </View>
-              {submitted && !emailRegex.test(email) && (
-                <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 6 }}>
-                  Please enter a valid email
-                </Text>
-              )}
             </View>
 
             <View style={loginStyles.inputContainer}>
               <Text style={loginStyles.label}>Password</Text>
-              
               <View style={loginStyles.inputWrapper}>
                 <Feather name="lock" size={20} color="#64748B" />
                 <TextInput
@@ -125,21 +117,6 @@ export default function LoginScreen() {
                   <Feather name={showPassword ? "eye" : "eye-off"} size={20} color="#64748B" />
                 </TouchableOpacity>
               </View>
-
-              {submitted && password.length < 6 && (
-                <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 6 }}>
-                  Password must be at least 6 characters
-                </Text>
-              )}
-
-              <TouchableOpacity
-                style={{ alignSelf: 'flex-end', marginTop: 8 }}
-                onPress={handleForgotPassword}
-              >
-                <Text style={loginStyles.forgotPassword}>
-                  Forgot password?
-                </Text>
-              </TouchableOpacity>
             </View>
 
             <TouchableOpacity 
@@ -152,17 +129,28 @@ export default function LoginScreen() {
               </Text>
             </TouchableOpacity>
 
-            <View style={{ marginTop: 32, alignItems: 'center' }}>
-              <Text style={loginStyles.orText}>Or login with</Text>
+            {/* Social Login */}
+            {/* <View style={{ marginTop: 32, alignItems: 'center' }}>
+              <Text style={loginStyles.orText}>Or continue with</Text>
               <View style={loginStyles.socialContainer}>
-                <TouchableOpacity style={loginStyles.socialButton}>
+                <TouchableOpacity 
+                  style={loginStyles.socialButton}
+                  onPress={() => promptAsync()}
+                  disabled={!request}
+                >
                   <FontAwesome name="google" size={22} color="#DB4437" />
                 </TouchableOpacity>
-                <TouchableOpacity style={loginStyles.socialButton}>
-                  <FontAwesome name="apple" size={22} color="#000000" />
-                </TouchableOpacity>
+
+                {Platform.OS === 'ios' && (
+                  <TouchableOpacity 
+                    style={loginStyles.socialButton}
+                    onPress={handleAppleLogin}
+                  >
+                    <FontAwesome name="apple" size={22} color="#000000" />
+                  </TouchableOpacity>
+                )}
               </View>
-            </View>
+            </View>*/}
           </View>
 
           <View style={loginStyles.signupContainer}>

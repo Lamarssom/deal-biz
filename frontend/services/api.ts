@@ -49,6 +49,7 @@ export interface AuthResponse {
   accessToken?: string;
   access_token?: string;
   user?: {
+    isProfileComplete: boolean;
     id: string;
     email: string;
     role: string;
@@ -241,6 +242,14 @@ class ApiService {
 
   async login(payload: LoginPayload): Promise<AuthResponse> {
     return this.request<AuthResponse>('/auth/login', 'POST', payload);
+  }
+
+  async googleLogin(idToken: string): Promise<any> {
+    return this.request<any>('/auth/google', 'POST', { idToken }, false);
+  }
+
+  async appleLogin(identityToken: string, fullName?: string): Promise<any> {
+    return this.request<any>('/auth/apple', 'POST', { identityToken, fullName }, false);
   }
 
   async verifyOtp(payload: VerifyOtpPayload): Promise<any> {

@@ -10,6 +10,8 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { UpdatePhoneDto } from './dto/update-phone.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { AppleLoginDto } from './dto/apple-login.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -67,5 +69,17 @@ export class AuthController {
   @Post('update-phone')
   updatePhone(@Req() req: any, @Body() dto: UpdatePhoneDto) {
     return this.authService.updatePhoneNumber(req.user.id, dto);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('google')
+  googleLogin(@Body() dto: GoogleLoginDto) {
+    return this.authService.googleLogin(dto);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('apple')
+  appleLogin(@Body() dto: AppleLoginDto) {
+    return this.authService.appleLogin(dto);
   }
 }

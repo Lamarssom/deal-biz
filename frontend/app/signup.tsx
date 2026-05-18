@@ -5,11 +5,15 @@ import {
   Text, 
   TextInput, 
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
 import Logo from '../components/Logo';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import * as AppleAuthentication from 'expo-apple-authentication';
 import { Dropdown } from '../components/Dropdown';
 import { signupStyles } from '../styles/signup.styles';
 import { apiService, State as StateType, LGA } from '../services/api';
@@ -59,6 +63,8 @@ export default function SignupScreen() {
   const [isLoadingLgas, setIsLoadingLgas] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+
 
   useEffect(() => {
     if (role === 'merchant' && states.length === 0) {
@@ -176,6 +182,9 @@ export default function SignupScreen() {
       setIsSubmitting(false);
     }
   };
+
+
+  
 
   return (
     <ScrollView
@@ -402,14 +411,24 @@ export default function SignupScreen() {
 
               <Text style={signupStyles.orText}>Or sign up with</Text>
               
-              <View style={signupStyles.socialContainer}>
-                <TouchableOpacity style={signupStyles.socialButton}>
+              {/*<View style={signupStyles.socialContainer}>
+                <TouchableOpacity 
+                  style={signupStyles.socialButton}
+                  onPress={() => promptAsync()}
+                  disabled={!request}
+                >
                   <FontAwesome name="google" size={20} color="#DB4437" />
                 </TouchableOpacity>
-                <TouchableOpacity style={signupStyles.socialButton}>
-                  <FontAwesome name="apple" size={20} color="#000000" />
-                </TouchableOpacity>
-              </View>
+
+                {Platform.OS === 'ios' && (
+                  <TouchableOpacity 
+                    style={signupStyles.socialButton}
+                    onPress={handleAppleSignup}
+                  >
+                    <FontAwesome name="apple" size={20} color="#000000" />
+                  </TouchableOpacity>
+                )}
+              </View>*/}
             </>
           )}
         </View>

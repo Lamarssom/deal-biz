@@ -19,7 +19,7 @@ export class User {
   @Column({ type: 'enum', enum: ['CUSTOMER'], default: 'CUSTOMER' })
   role!: Role;
 
-  @Column({ default: false })                // ← Changed to false so customers also need verification
+  @Column({ default: false })
   isVerified!: boolean;
 
   @Column({ nullable: true })
@@ -31,10 +31,15 @@ export class User {
   @Column({ default: true })
   isActive!: boolean;
 
+  @Column({ default: false })          
+  isProfileComplete!: boolean;
+
+  @Column({ nullable: true })
+  name?: string;
+
   @CreateDateColumn()
   createdAt!: Date;
 
   @UpdateDateColumn()
   updatedAt!: Date;
-  name: any;
 }

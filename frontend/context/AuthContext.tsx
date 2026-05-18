@@ -3,14 +3,16 @@ import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { apiService } from '../services/api';
+import { router } from 'expo-router';
 
 interface User {
   id: string;
   email: string;
   role: string;
-  name?: string;           // for customers
-  businessName?: string;   // for merchants
-  phoneNumber?: string;    // now added for both roles
+  name?: string;
+  businessName?: string;
+  phoneNumber?: string;
+  isProfileComplete?: boolean;     // ← NEW
 }
 
 interface AuthContextType {
@@ -50,7 +52,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (storedUser) {
           setUser(storedUser);
           setIsSignedIn(true);
-          console.log('✅ Auth restored successfully');
+
+          // Redirect to profile completion if needed
+          if (storedUser.isProfileComplete === false) {
+            router.replace('/profile-completion');
+          }
         }
       }
     } catch (e) {
@@ -73,7 +79,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setUser(response.user);
         setIsSignedIn(true);
-        console.log('✅ Login successful - token saved');
+
+        // Check profile completion
+        if (response.user.isProfileComplete === false) {
+          router.replace('/profile-completion');
+        } else {
+          router.replace('/(tabs)/home');
+        }
       } else {
         throw new Error('Login failed: No token or user received');
       }
@@ -94,6 +106,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setUser(response.user);
         setIsSignedIn(true);
+
+        if (response.user.isProfileComplete === false) {
+          router.replace('/profile-completion');
+        } else {
+          router.replace('/(tabs)/home');
+        }
       }
       return response;
     } finally {
@@ -108,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiService.removeToken();
       setUser(null);
       setIsSignedIn(false);
-      console.log('✅ Logout successful');
+      router.replace('/login');
     } finally {
       setIsLoading(false);
     }
