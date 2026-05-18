@@ -29,6 +29,7 @@ export class AuthController {
   }
 
   // Updated endpoint name + DTO
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('verify-otp')
   verifyOtp(@Body() dto: VerifyOtpDto) {
     return this.authService.verifyOtp(dto);
@@ -52,12 +53,16 @@ export class AuthController {
     return req.user;
   }
 
+  
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @UseGuards(JwtAuthGuard)
   @Post('change-password')
   changePassword(@Req() req: any, @Body() dto: ChangePasswordDto) {
     return this.authService.changePassword(req.user.id, dto);
   }
 
+  
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @UseGuards(JwtAuthGuard)
   @Post('update-phone')
   updatePhone(@Req() req: any, @Body() dto: UpdatePhoneDto) {

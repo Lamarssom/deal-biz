@@ -1,4 +1,4 @@
-//src\main.ts
+// src/main.ts
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
@@ -14,26 +14,37 @@ async function bootstrap() {
   });
 
   const configService = app.get(ConfigService);
+  const isProduction = configService.get<string>('NODE_ENV') === 'production';
 
-  //Security Headers
+  // === Security Headers ===
   app.use(
     helmet({
       contentSecurityPolicy: false,
     }),
   );
 
-  //Gzip compression
+  // === Gzip compression ===
   app.use(compression());
 
-  //CORS (tighten origin in production – '*' is ok for now with Flutter)
+  // === CORS - Tightened for Production ===
+  const allowedOrigins = isProduction
+    ? [
+        'https://your-frontend-domain.com',     // ← change to your actual deployed frontend URL
+        'https://deal-biz-web.vercel.app',      // example if you deploy to Vercel
+        // Add any other production domains here
+      ]
+    : ['*']; // development = allow everything
+
   app.enableCors({
-    origin: '*',
+    origin: allowedOrigins,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Accept, Authorization, x-paystack-signature',
     credentials: true,
   });
 
-  //Global Validation Pipe
+  console.log(`CORS configured for: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+
+  // === Global Validation Pipe ===
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -42,7 +53,7 @@ async function bootstrap() {
     }),
   );
 
-  // Enable raw body ONLY for webhook (must come before global json parser if needed)
+  // === Raw body for Paystack webhook (must stay before JSON parser) ===
   app.use(
     express.json({
       verify: (req: any, res: any, buf: Buffer) => {
@@ -53,18 +64,19 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger
-  const config = new DocumentBuilder()
-    .setTitle('Deal-Biz API')
-    .setDescription('Hyperlocal Promotion Platform Backend')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  // === Swagger (disable in production or protect it) ===
+  if (!isProduction) {
+    const config = new DocumentBuilder()
+      .setTitle('Deal-Biz API')
+      .setDescription('Hyperlocal Promotion Platform Backend')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api', app, document);
+  }
 
   const port = configService.get<number>('PORT') || 3000;
-
   await app.listen(port);
   console.log(`🚀 Deal-Biz backend running on http://localhost:${port}`);
 }
