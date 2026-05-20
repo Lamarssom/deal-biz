@@ -1,10 +1,9 @@
-//C:\Users\Godwin\Desktop\deal-biz\Backend\src\schedule\invoicing.cron.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Merchant } from '../entities/merchant.entity';
-import { PaymentsService } from '../modules/payments/payments.service';
+import { EmailService } from '../modules/email/email.service';
 
 @Injectable()
 export class InvoicingCron {
@@ -13,44 +12,49 @@ export class InvoicingCron {
   constructor(
     @InjectRepository(Merchant)
     private merchantRepository: Repository<Merchant>,
-    private paymentsService: PaymentsService,
+    private emailService: EmailService,
   ) {}
 
-  @Cron(CronExpression.EVERY_HOUR)
-  async handleAutoInvoicing() {
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async handleBalanceReminders() {
     const now = new Date();
-    const threshold = 2000; // ₦2,000
-    const invoiceIntervalDays = 7; // every 7 days
+    const threshold = 2000;
+    const reminderIntervalDays = 2;
 
-    const cuttoffDate = new Date(
-      now.getTime() - invoiceIntervalDays * 24 * 60 * 60 * 1000,
-    );
+    const cutoffDate = new Date(now.getTime() - reminderIntervalDays * 24 * 60 * 60 * 1000);
 
-    // Better: use query builder for >= 2000
-    const merchantsToInvoice = await this.merchantRepository
+    const merchantsToRemind = await this.merchantRepository
       .createQueryBuilder('merchant')
       .where('merchant.outstandingBalance >= :threshold', { threshold })
-      .orWhere('merchant.lastInvoicedAt <= :cutoff', {
-        cutoff: cuttoffDate,
-      })
+      .andWhere('merchant.isActive = true')
+      .andWhere(
+        '(merchant.lastRemindedAt IS NULL OR merchant.lastRemindedAt <= :cutoff)',
+        { cutoff: cutoffDate }
+      )
       .getMany();
 
     this.logger.log(
-      `Found ${merchantsToInvoice.length} merchants eligible for invoicing`,
+      `Found ${merchantsToRemind.length} merchants eligible for balance reminder`
     );
 
-    for (const merchant of merchantsToInvoice) {
+    for (const merchant of merchantsToRemind) {
       try {
-        //await this.paymentsService.handleSuccessfulPayment(merchant.id);
+        await this.emailService.sendBalanceReminder(
+          merchant.email,
+          merchant.businessName || 'Merchant',
+          merchant.outstandingBalance
+        );
 
+        // Update last reminded time
         await this.merchantRepository.update(merchant.id, {
-          lastInvoicedAt: now,
+          lastRemindedAt: now,
         });
+
         this.logger.log(
-          `Auto-invoiced merchant ${merchant.id} | Balance: ₦${merchant.outstandingBalance}`,
+          `Balance reminder sent to ${merchant.email} | Balance: ₦${merchant.outstandingBalance}`
         );
       } catch (error) {
-        this.logger.error(`Invoice failed for merchant ${merchant.id}`, error);
+        this.logger.error(`Failed to send reminder to ${merchant.email}`, error);
       }
     }
   }

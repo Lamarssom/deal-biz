@@ -1,7 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import NetInfo from '@react-native-community/netinfo';
 import { API_BASE_URL, CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET } from '../constants/config';
 
 export interface RegisterPayload {
@@ -29,7 +28,7 @@ export interface ForgotPasswordPayload {
   email: string;
 }
 
-export interface ResetPasswordPayload {          // ← NEW
+export interface ResetPasswordPayload {       
   token: string;
   newPassword: string;
 }
@@ -122,10 +121,8 @@ class ApiService {
 
       const userData = await AsyncStorage.getItem('user_data');
       if (userData) this.user = JSON.parse(userData);
-
-      console.log('[API] init complete → token:', !!this.token, 'userId:', this.user?.id);
     } catch (error) {
-      console.log('Error loading token/user:', error);
+      console.error('Error loading token/user:', error);
     }
   }
 
@@ -139,9 +136,8 @@ class ApiService {
         await AsyncStorage.setItem('auth_token', token);
       }
       this.token = token;
-      console.log('[API] Token saved successfully');
     } catch (error) {
-      console.log('Error saving token:', error);
+      console.error('Error saving token:', error);
     }
   }
 
@@ -150,7 +146,7 @@ class ApiService {
       await AsyncStorage.setItem('user_data', JSON.stringify(user));
       this.user = user;
     } catch (error) {
-      console.log('Error saving user:', error);
+      console.error('Error saving user:', error);
     }
   }
 
@@ -166,7 +162,6 @@ class ApiService {
         `@deal_biz_cache_promotions_${this.user.id}`,
         `@deal_biz_cache_analytics_${this.user.id}`,
       ]);
-      console.log(`[API] All caches cleared for user ${this.user.id}`);
     } catch (e) {}
   }
 
@@ -174,41 +169,55 @@ class ApiService {
     return this.user?.id ? `${baseKey}_${this.user.id}` : baseKey;
   }
 
-    private async request<T>(
+  private async request<T>(
     endpoint: string,
     method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
     body?: any,
     isAuth: boolean = false,
     cacheKeyBase?: string
   ): Promise<T> {
+    const baseUrl = Platform.OS === 'web' 
+      ? 'http://localhost:3000' 
+      : API_BASE_URL;
+
+    const fullUrl = `${baseUrl}${endpoint}`;
+
     const maxRetries = 3;
     let attempt = 0;
 
     while (attempt < maxRetries) {
       try {
-        const headers: HeadersInit = { 'Content-Type': 'application/json' };
+        const headers: HeadersInit = { 
+          'Content-Type': 'application/json',
+        };
 
-        if (isAuth && !this.token) {
-          await this.init();
+        // Only add ngrok header when actually needed (mobile + ngrok tunnel)
+        if (fullUrl.includes('ngrok') || Platform.OS !== 'web') {
+          headers['ngrok-skip-browser-warning'] = '69420';
         }
+
         if (isAuth && this.token) {
           headers['Authorization'] = `Bearer ${this.token}`;
         }
 
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        const response = await fetch(fullUrl, {
           method,
           headers,
           body: body ? JSON.stringify(body) : undefined,
         });
 
-        const data = await response.json();
+        let data;
+        try {
+          data = await response.json();
+        } catch (e) {
+          data = await response.text();
+        }
 
         if (!response.ok) {
           if (response.status === 401) {
-            console.log('[API] 401 Unauthorized → auto-logout');
             await this.removeToken();
           }
-          throw new Error(data.message || `API Error: ${response.status}`);
+          throw new Error(data.message || `HTTP ${response.status}`);
         }
 
         if (method === 'GET' && cacheKeyBase) {
@@ -217,21 +226,18 @@ class ApiService {
         }
 
         return data as T;
+
       } catch (error: any) {
         attempt++;
-
-        const netState = await NetInfo.fetch();
-        if ((!netState.isConnected || !navigator.onLine) && cacheKeyBase) {
-          const cacheKey = this.getCacheKey(cacheKeyBase);
-          const cached = await AsyncStorage.getItem(cacheKey);
-          if (cached) return JSON.parse(cached) as T;
+        if (attempt === maxRetries) {
+          console.error(`[API] All attempts failed for ${endpoint}`);
+          throw new Error(error.message || 'Unable to connect to server. Please try again later.');
         }
 
-        if (attempt === maxRetries) throw error;
-
-        await new Promise(resolve => setTimeout(resolve, 400 * Math.pow(2, attempt - 1)));
+        await new Promise(resolve => setTimeout(resolve, 1200 * attempt));
       }
     }
+
     throw new Error('Request failed after retries');
   }
 
@@ -260,7 +266,7 @@ class ApiService {
     return this.request<any>('/auth/forgot-password', 'POST', payload);
   }
 
-  async resetPassword(payload: ResetPasswordPayload): Promise<any> {   // ← NEW
+  async resetPassword(payload: ResetPasswordPayload): Promise<any> {
     return this.request<any>('/auth/reset-password', 'POST', payload);
   }
 
@@ -284,7 +290,7 @@ class ApiService {
     return this.request<any[]>('/promotions/my', 'GET', undefined, true, '@deal_biz_cache_promotions');
   }
 
-    async updatePromotionQuantity(promotionId: string, quantityLimit: number): Promise<any> {
+  async updatePromotionQuantity(promotionId: string, quantityLimit: number): Promise<any> {
     return this.request<any>(
       `/promotions/${promotionId}/quantity`,
       'PATCH',
@@ -358,9 +364,8 @@ class ApiService {
       await AsyncStorage.removeItem('user_data');
       this.token = null;
       this.user = null;
-      console.log('[API] Token and user data removed successfully');
     } catch (error) {
-      console.log('Error removing token:', error);
+      console.error('Error removing token:', error);
     }
   }
 
@@ -375,7 +380,6 @@ class ApiService {
   async getProfile() {
     return this.request<any>('/auth/profile', 'GET', undefined, true);
   }
-  
 }
 
 export const apiService = new ApiService();

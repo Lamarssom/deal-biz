@@ -156,7 +156,7 @@ export default function SignupScreen() {
         password,
         name,
         role: role.toUpperCase() as 'MERCHANT' | 'CUSTOMER',
-        phoneNumber: phoneNumber || undefined,        // ← Sent for both roles
+        phoneNumber: phoneNumber || undefined,
         ...(role === 'merchant' && {
           businessName,
           category,
@@ -169,12 +169,14 @@ export default function SignupScreen() {
 
       const response = await register(payload);
 
-      if (response?.user) {
+      if (response?.message?.toLowerCase().includes('verify') || response?.user?.isVerified === false) {
+        // Go to OTP verification
+        Toast.show({ type: 'success', text1: 'Check Your Email', text2: response.message || 'Verification code sent' });
+        router.push(`/verify-otp?email=${encodeURIComponent(normalizedEmail)}`);
+      } else if (response?.user) {
+        // Already verified (rare case)
         Toast.show({ type: 'success', text1: 'Account created successfully!' });
         router.replace('/(tabs)/home');
-      } else if (response?.message) {
-        router.push(`/verify-otp?email=${encodeURIComponent(normalizedEmail)}`);
-        Toast.show({ type: 'success', text1: 'Check Your Email', text2: response.message });
       }
     } catch (error: any) {
       Toast.show({ type: 'error', text1: 'Error', text2: error?.message || 'Registration failed. Please try again.' });
@@ -182,8 +184,6 @@ export default function SignupScreen() {
       setIsSubmitting(false);
     }
   };
-
-
   
 
   return (

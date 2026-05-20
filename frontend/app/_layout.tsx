@@ -86,7 +86,7 @@ export default function RootLayout() {
                   <Stack.Screen name="welcome" />
                   <Stack.Screen name="login" options={{ animation: 'slide_from_right' }} />
                   <Stack.Screen name="signup" options={{ animation: 'slide_from_right' }} />
-                  <Stack.Screen name="verify-email" options={{ animation: 'slide_from_right' }} />
+                  <Stack.Screen name="verify-otp" options={{ animation: 'slide_from_right' }} />
                   <Stack.Screen name="(tabs)" />
                 </Stack>
               </ErrorBoundary>

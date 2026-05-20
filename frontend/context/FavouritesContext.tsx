@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { apiService } from '../services/api';
 import { useAuth } from './AuthContext';
+import { usePathname } from 'expo-router';
 import { AppState, Platform } from 'react-native';
 
 interface Favourite {
@@ -20,52 +21,57 @@ interface FavouritesContextType {
 const FavouritesContext = createContext<FavouritesContextType | undefined>(undefined);
 
 export function FavouritesProvider({ children }: { children: ReactNode }) {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, isLoading: authLoading } = useAuth();
+  const pathname = usePathname();
+
   const [favourites, setFavourites] = useState<Favourite[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // FIXED: Accept both number (web) and NodeJS.Timeout (native)
   const pollInterval = useRef<NodeJS.Timeout | number | null>(null);
+  const hasInitialized = useRef(false);
+
+  const isProtectedRoute = pathname?.startsWith('/(tabs)') === true;
 
   const refreshFavourites = useCallback(async () => {
-    if (!isSignedIn) {
+    if (!isSignedIn || authLoading || !isProtectedRoute) {
+      //console.log(`[FavouritesProvider] Skipped (signedIn: ${isSignedIn}, authLoading: ${authLoading}, route: ${pathname})`);
       setFavourites([]);
+      setLoading(false);
       return;
     }
+
+    //console.log(`[FavouritesProvider] Refreshing favourites on protected route: ${pathname}`);
     setLoading(true);
+    hasInitialized.current = true;
+
     try {
       const data = await apiService.getMyFavourites();
-      setFavourites(data);
-    } catch (err) {
+      setFavourites(data || []);
+    } catch (err: any) {
       console.error('Failed to load favourites:', err);
+      setFavourites([]);
     } finally {
       setLoading(false);
     }
-  }, [isSignedIn]);
+  }, [isSignedIn, authLoading, isProtectedRoute, pathname]);
 
-  // Initial load + login changes
+  // Initial load
   useEffect(() => {
-    if (isSignedIn) {
-      refreshFavourites();
-    } else {
-      setFavourites([]);
-    }
-  }, [isSignedIn, refreshFavourites]);
+    refreshFavourites();
+  }, [refreshFavourites]);
 
-  // Real-time improvements
+  // Real-time listeners + polling (only on protected routes)
   useEffect(() => {
-    if (!isSignedIn) return;
+    if (!isSignedIn || authLoading || !isProtectedRoute) return;
 
-    // Mobile: AppState change
+    //console.log('[FavouritesProvider] 🚀 Starting listeners + polling');
+
     const appStateSub = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active') refreshFavourites();
     });
 
-    // Web + Mobile: Tab becomes visible / window focus
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        refreshFavourites();
-      }
+      if (document.visibilityState === 'visible') refreshFavourites();
     };
 
     if (Platform.OS === 'web') {
@@ -73,12 +79,11 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
       window.addEventListener('focus', refreshFavourites);
     }
 
-    // Light polling (every 10 seconds)
     pollInterval.current = setInterval(() => {
       if (Platform.OS === 'web' && document.visibilityState === 'visible') {
         refreshFavourites();
       }
-    }, 10000);
+    }, 15000);
 
     return () => {
       appStateSub.remove();
@@ -88,18 +93,18 @@ export function FavouritesProvider({ children }: { children: ReactNode }) {
       }
       if (pollInterval.current) {
         clearInterval(pollInterval.current);
+        pollInterval.current = null;
       }
     };
-  }, [isSignedIn, refreshFavourites]);
+  }, [isSignedIn, authLoading, isProtectedRoute, refreshFavourites]);
 
-  const isFavourite = (promotionId: string) => {
-    return favourites.some(f => f.promotionId === promotionId);
-  };
+  const isFavourite = (promotionId: string) => favourites.some(f => f.promotionId === promotionId);
 
   const toggleFavourite = async (promotionId: string) => {
+    if (!isSignedIn || authLoading || !isProtectedRoute) return;
+
     const alreadyFavourite = isFavourite(promotionId);
 
-    // Optimistic update
     if (alreadyFavourite) {
       setFavourites(prev => prev.filter(f => f.promotionId !== promotionId));
     } else {

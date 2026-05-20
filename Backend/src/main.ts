@@ -1,4 +1,4 @@
-// src/main.ts
+// src/main.ts - FINAL FIXED VERSION (using NestJS built-in CORS)
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
@@ -9,42 +9,29 @@ import express from 'express';
 import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
-    bufferLogs: true,
-  });
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
   const configService = app.get(ConfigService);
   const isProduction = configService.get<string>('NODE_ENV') === 'production';
 
-  // === Security Headers ===
-  app.use(
-    helmet({
-      contentSecurityPolicy: false,
-    }),
-  );
+  console.log(`🚀 Starting in ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'} mode`);
 
-  // === Gzip compression ===
-  app.use(compression());
-
-  // === CORS - Tightened for Production ===
-  const allowedOrigins = isProduction
-    ? [
-        'https://your-frontend-domain.com',     // ← change to your actual deployed frontend URL
-        'https://deal-biz-web.vercel.app',      // example if you deploy to Vercel
-        // Add any other production domains here
-      ]
-    : ['*']; // development = allow everything
-
+  // === NESTJS BUILT-IN CORS - SIMPLIFIED FOR DEVELOPMENT ===
   app.enableCors({
-    origin: allowedOrigins,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Accept, Authorization, x-paystack-signature',
+    origin: true,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'ngrok-skip-browser-warning'],
+    exposedHeaders: ['Authorization'],
   });
 
-  console.log(`CORS configured for: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+  console.log('CORS enabled with origin: true (perfect for localhost:8081 + Expo web)');
 
-  // === Global Validation Pipe ===
+  // === Other middleware ===
+  app.use(helmet({ contentSecurityPolicy: false }));
+  app.use(compression());
+
+  // === Global pipes & body parser ===
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -53,7 +40,6 @@ async function bootstrap() {
     }),
   );
 
-  // === Raw body for Paystack webhook (must stay before JSON parser) ===
   app.use(
     express.json({
       verify: (req: any, res: any, buf: Buffer) => {
@@ -64,7 +50,7 @@ async function bootstrap() {
     }),
   );
 
-  // === Swagger (disable in production or protect it) ===
+  // === Swagger (dev only) ===
   if (!isProduction) {
     const config = new DocumentBuilder()
       .setTitle('Deal-Biz API')

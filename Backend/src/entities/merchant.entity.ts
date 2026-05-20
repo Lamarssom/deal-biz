@@ -77,4 +77,7 @@ export class Merchant {
 
   @UpdateDateColumn()
   updatedAt!: Date;
+
+  @Column({ type: 'timestamp', nullable: true })
+  lastRemindedAt!: Date | null;
 }

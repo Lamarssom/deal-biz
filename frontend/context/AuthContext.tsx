@@ -12,16 +12,15 @@ interface User {
   name?: string;
   businessName?: string;
   phoneNumber?: string;
-  isProfileComplete?: boolean;     // ← NEW
 }
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isSignedIn: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: any) => Promise<any>;
-  logout: () => Promise<void>;
+  login: (email: string, password: string) => Promise<any>;     // ← returns response
+  register: (data: any) => Promise<any>;                        // ← returns response
+  logout: () => Promise<void>;                                  // ← no navigation here
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,7 +39,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiService.init();
 
       let token: string | null = null;
-
       if (Platform.OS !== 'web') {
         token = await SecureStore.getItemAsync('auth_token');
       } else {
@@ -52,11 +50,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (storedUser) {
           setUser(storedUser);
           setIsSignedIn(true);
-
-          // Redirect to profile completion if needed
-          if (storedUser.isProfileComplete === false) {
-            router.replace('/profile-completion');
-          }
         }
       }
     } catch (e) {
@@ -70,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       const response = await apiService.login({ email, password });
-      
+
       if (response.accessToken && response.user) {
         await apiService.saveToken(response.accessToken);
         await apiService.saveUser(response.user);
@@ -79,16 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setUser(response.user);
         setIsSignedIn(true);
-
-        // Check profile completion
-        if (response.user.isProfileComplete === false) {
-          router.replace('/profile-completion');
-        } else {
-          router.replace('/(tabs)/home');
-        }
-      } else {
-        throw new Error('Login failed: No token or user received');
       }
+      return response;   // ← screen will navigate
     } finally {
       setIsLoading(false);
     }
@@ -106,14 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         setUser(response.user);
         setIsSignedIn(true);
-
-        if (response.user.isProfileComplete === false) {
-          router.replace('/profile-completion');
-        } else {
-          router.replace('/(tabs)/home');
-        }
       }
-      return response;
+      return response;   // ← screen will navigate
     } finally {
       setIsLoading(false);
     }
@@ -126,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiService.removeToken();
       setUser(null);
       setIsSignedIn(false);
-      router.replace('/login');
+      // NO navigation here — screen will handle it
     } finally {
       setIsLoading(false);
     }

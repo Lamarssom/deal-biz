@@ -7,7 +7,8 @@ import {
   ActivityIndicator,
   Image,
   RefreshControl,
-  Platform
+  Platform,
+  Alert,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
@@ -39,8 +40,8 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [lastLat, setLastLat] = useState<number>(6.5244);
-  const [lastLng, setLastLng] = useState<number>(3.3792);
+  // Live location - no hardcoded values
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -74,8 +75,8 @@ export default function HomeScreen() {
       .sort((a, b) => {
         const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        if (timeB !== timeA) return timeB - timeA;           // Newest first
-        return getPercentageOff(b) - getPercentageOff(a);   // Then highest discount
+        if (timeB !== timeA) return timeB - timeA;
+        return getPercentageOff(b) - getPercentageOff(a);
       })
       .slice(0, 5);
   }, [promotions]);
@@ -87,47 +88,66 @@ export default function HomeScreen() {
     return `${Math.max(10, Math.round(minutes / 5) * 5)}-${Math.round(minutes / 5) * 5 + 5} min`;
   };
 
+  // REAL-TIME LOCATION – web + mobile (no hardcoded coordinates)
   const getUserLocation = async () => {
-    if (Platform.OS === 'web') {
-      await loadPromotions(lastLat, lastLng);
-      return;
-    }
-
     setLocationLoading(true);
     setError(null);
 
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        await loadPromotions(lastLat, lastLng);
-        return;
+      let latitude: number;
+      let longitude: number;
+
+      if (Platform.OS === 'web') {
+        if (!navigator.geolocation) {
+          throw new Error('Geolocation not supported');
+        }
+
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: false,   // faster on web
+            timeout: 15000,              // 15s timeout
+            maximumAge: 30000,           // accept 30s old location
+          });
+        });
+
+        latitude = position.coords.latitude;
+        longitude = position.coords.longitude;
+      } else {
+        // Mobile
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Location Permission', 'Location is required for nearby promotions.');
+          setError('Location permission denied.');
+          return;
+        }
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        latitude = loc.coords.latitude;
+        longitude = loc.coords.longitude;
       }
 
-      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const { latitude, longitude } = location.coords;
-      setLastLat(latitude);
-      setLastLng(longitude);
+      setCurrentLocation({ lat: latitude, lng: longitude });
       await loadPromotions(latitude, longitude);
-    } catch (err) {
-      await loadPromotions(lastLat, lastLng);
+    } catch (err: any) {
+      console.error('Location error:', err);
+      if (err.code === 3) {
+        setError('Location request timed out. Please try again.');
+      } else {
+        setError('Could not get your location. Please try again.');
+      }
     } finally {
       setLocationLoading(false);
+      setLoading(false);
     }
   };
 
   const loadPromotions = async (lat: number, lng: number) => {
     try {
       const data = await apiService.getNearbyPromotions(lat, lng, 30);
-      //console.log('✅ Loaded promotions count:', data.length);
-
       setPromotions(data);
       setFilteredPromotions(sortByNewest(data));
       setError(null);
     } catch (error: any) {
       setError("Couldn't load promotions. Check your connection.");
-      //console.error('Load promotions error:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -145,20 +165,22 @@ export default function HomeScreen() {
       setFilteredPromotions(sortByNewest(promotions));
       return;
     }
-
     const query = searchQuery.toLowerCase().trim();
     const filtered = promotions.filter((promo: any) =>
       promo.title?.toLowerCase().includes(query) ||
       promo.merchant?.businessName?.toLowerCase().includes(query) ||
       promo.description?.toLowerCase().includes(query)
     );
-
     setFilteredPromotions(sortByNewest(filtered));
   }, [searchQuery, promotions]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadPromotions(lastLat, lastLng);
+    if (currentLocation) {
+      await loadPromotions(currentLocation.lat, currentLocation.lng);
+    } else {
+      await getUserLocation();
+    }
     setRefreshing(false);
   };
 
@@ -227,7 +249,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Best Deals - Newest First + Highest Discount */}
+        {/* Best Deals */}
         {bestDeals.length > 0 && (
           <>
             <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
@@ -282,12 +304,12 @@ export default function HomeScreen() {
 
         {loading && <LoadingSkeleton />}
         {error && !loading && <ErrorState message={error} onRetry={() => getUserLocation()} />}
-        
+
         {!loading && !error && filteredPromotions.filter(isActivePromotion).length === 0 && (
           <EmptyState icon="search" title="No promotions found" subtitle="Try changing your search or location" />
         )}
 
-        {!loading && !error && filteredPromotions.filter(isActivePromotion).length > 0 && 
+        {!loading && !error && filteredPromotions.filter(isActivePromotion).length > 0 &&
           filteredPromotions.filter(isActivePromotion).map((promo: any) => {
             const favourited = isFavourite(promo.id);
             const perc = getPercentageOff(promo);

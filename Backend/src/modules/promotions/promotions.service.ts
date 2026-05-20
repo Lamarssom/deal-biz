@@ -202,49 +202,35 @@ export class PromotionsService {
     radiusKm: number = 15,
     limit: number = 20,
   ): Promise<any[]> {
+    console.log(`[DEBUG] getNearbyPromotions called with lat=${userLat}, lng=${userLng}`);
+
     try {
-      const merchants = await this.locationService.findMerchantsInRadius(
-        userLat,
-        userLng,
-        radiusKm,
-        100,
-      );
-
-      if (merchants.length === 0) {
-        // fallback logic remains the same
-        const allActive = await this.promotionRepo.find({
-          where: { isActive: true, expiry: MoreThan(new Date()) },
-          relations: ['merchant'],
-          take: limit,
-        });
-        return allActive.map(p => this.formatPromotion(p, userLat, userLng));
-      }
-
-      const merchantIds = merchants.map(m => m.id);
-
-      // NEW: Proper active promotion filter (expiry + not exhausted)
+      // TEMPORARY SIMPLE VERSION - just return all active promotions
       const promotions = await this.promotionRepo.find({
-        where: {
-          merchantId: In(merchantIds),
-          isActive: true,
-          expiry: MoreThan(new Date()),
+        where: { 
+          isActive: true, 
+          expiry: MoreThan(new Date()) 
         },
         relations: ['merchant'],
-        take: 100,
+        take: limit,
       });
 
-      // Filter out exhausted promotions in memory (cleanest for now)
-      const activePromotions = promotions.filter(p => {
-        const exhausted = p.quantityLimit > 0 && p.redeemedCount >= p.quantityLimit;
-        return !exhausted;
-      });
+      console.log(`[DEBUG] Found ${promotions.length} active promotions`);
 
-      return this.formatAndRankPromotions(activePromotions, userLat, userLng, limit);
-
+      return promotions.map(p => this.formatPromotion(p, userLat, userLng));
     } catch (error) {
-      console.error('Error in getNearbyPromotions:', error);
-      return [];
+      console.error('🚨 CRITICAL ERROR in getNearbyPromotions:', error);
+      throw error; // Let NestJS show the real error
     }
+  }
+
+  private async getAllActivePromotionsFallback(limit: number, userLat: number, userLng: number) {
+    const allActive = await this.promotionRepo.find({
+      where: { isActive: true, expiry: MoreThan(new Date()) },
+      relations: ['merchant'],
+      take: limit,
+    });
+    return allActive.map((p) => this.formatPromotion(p, userLat, userLng));
   }
 
   async getMyPromotions(merchantId: string) {

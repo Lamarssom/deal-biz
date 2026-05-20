@@ -44,6 +44,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     setSubmitted(true);
+
     if (!emailRegex.test(email) || password.length < 6) {
       Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please enter valid email and password' });
       return;
@@ -52,7 +53,10 @@ export default function LoginScreen() {
     setIsLoggingIn(true);
     try {
       await login(email.trim().toLowerCase(), password);
+      
       Toast.show({ type: 'success', text1: 'Login Successful!' });
+      
+      router.replace('/(tabs)/home');
     } catch (error: any) {
       Toast.show({ type: 'error', text1: 'Login Failed', text2: error?.message || 'Invalid credentials' });
     } finally {

@@ -1,3 +1,4 @@
+// src/modules/promotions/promotions-ranking.service.ts
 import { Injectable } from '@nestjs/common';
 import { Promotion } from '../../entities/promotion.entity';
 import { LocationService } from '../location/location.service';
@@ -6,28 +7,37 @@ import { LocationService } from '../location/location.service';
 export class PromotionsRankingService {
   constructor(private locationService: LocationService) {}
 
-  /**
-   * Core ranking: distance + popularity + urgency
-   * 1. Distance (closest first)
-   * 2. Popularity (views + redemptions)
-   * 3. Urgency (soonest expiry)
-   */
-  rankPromotions(userLat: number, userLng: number, promotions: Promotion[]): Promotion[] {
+  rankPromotions(
+    userLat: number,
+    userLng: number,
+    promotions: Promotion[],
+  ): Promotion[] {
+    if (promotions.length === 0) return [];
+
     return promotions
       .map((promo) => {
-
-        if (!promo.merchant?.latitude || !promo.merchant?.longitude) {
+        // Skip any promotion with missing merchant location
+        if (
+          !promo.merchant ||
+          promo.merchant.latitude === null ||
+          promo.merchant.latitude === undefined ||
+          promo.merchant.longitude === null ||
+          promo.merchant.longitude === undefined
+        ) {
           return null;
         }
 
         const distanceKm = this.locationService.calculateDistance(
           userLat,
           userLng,
-          promo.merchant.latitude!,
-          promo.merchant.longitude!,
+          Number(promo.merchant.latitude),
+          Number(promo.merchant.longitude),
         );
 
-        const urgencyScore = (new Date(promo.expiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24); // days left
+        const urgencyScore =
+          (new Date(promo.expiry).getTime() - Date.now()) /
+          (1000 * 60 * 60 * 24); // days left
+
         const popularityScore = promo.popularityScore || 0;
 
         // Composite score (lower = better rank)
@@ -35,9 +45,9 @@ export class PromotionsRankingService {
 
         return { promo, distanceKm, score };
       })
-      
-      .filter(Boolean)
-      .sort((a, b) => a!.score - b!.score)
-      .map((item) => item!.promo);
+      // Type guard to tell TypeScript these are not null
+      .filter((item): item is { promo: Promotion; distanceKm: number; score: number } => item !== null)
+      .sort((a, b) => a.score - b.score)
+      .map((item) => item.promo);
   }
 }

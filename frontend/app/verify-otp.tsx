@@ -33,7 +33,7 @@ export default function VerifyOtpScreen() {
     setIsSubmitting(true);
     try {
       await apiService.verifyOtp({ email, code });
-      Toast.show({ type: 'success', text1: '✅ Verified!', text2: 'You can now log in.' });
+      Toast.show({ type: 'success', text1: 'Verified!', text2: 'You can now log in.' });
       router.replace('/login');
     } catch (error: any) {
       Toast.show({ type: 'error', text1: 'Verification Failed', text2: error?.message || 'Invalid code. Try again.' });
